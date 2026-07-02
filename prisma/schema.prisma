@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  email     String?
+  role      String   @default("user") // admin, pic, user
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignedTickets SupportTicket[] @relation("AssignedPIC")
+  ticketUpdates   SupportTicketUpdate[]
+  auditLogs       AuditLog[]
+}
+
+model WhatsAppSource {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // group, contact, broadcast
+  phone       String
+  active      Boolean  @default(true)
+  description String?
+  config      String?  // JSON config for adapter
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  messages WhatsAppMessage[]
+  tickets  SupportTicket[]
+}
+
+model WhatsAppMessage {
+  id              String   @id @default(cuid())
+  sourceId        String
+  fromPhone       String
+  fromName        String?
+  body            String
+  timestamp       DateTime
+  rawData         String?  // Original JSON from adapter
+  isSupportRelated Boolean @default(false)
+  messageType     String?  // new_issue, update, confirmation, info_request, escalation, noise, general_chat
+  category        String?
+  priority        String?
+  confidence      Float?
+  evidence        String?  // JSON array
+  uncertainty     String?  // JSON array
+  summary         String?
+  isProcessed     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+
+  source  WhatsAppSource   @relation(fields: [sourceId], references: [id])
+  ticket  SupportTicketMessage?
+
+  @@index([sourceId])
+  @@index([timestamp])
+  @@index([isSupportRelated])
+}
+
+model SupportCategory {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  tickets SupportTicket[]
+}
+
+model SupportPriority {
+  id          String   @id @default(cuid())
+  name        String   @unique // Critical, High, Medium, Low
+  level       Int      @unique // 1=critical, 2=high, 3=medium, 4=low
+  color       String   @default("#6b7280")
+  description String?
+  createdAt   DateTime @default(now())
+
+  tickets SupportTicket[]
+}
+
+model SupportStatus {
+  id          String   @id @default(cuid())
+  name        String   @unique // New, Open, In Progress, Waiting User, Waiting Vendor, Resolved, Closed, Rejected/Invalid
+  sortOrder   Int      @default(0)
+  isClosed    Boolean  @default(false)
+  color       String   @default("#6b7280")
+  description String?
+  createdAt   DateTime @default(now())
+
+  tickets SupportTicket[]
+}
+
+model SupportTicket {
+  id           String   @id @default(cuid())
+  ticketNumber String   @unique
+  title        String
+  summary      String
+  reporterName String
+  reporterPhone String?
+  sourceId     String?
+  categoryId   String?
+  priorityId   String?
+  statusId     String
+  picId        String?
+  resolvedAt   DateTime?
+  closedAt     DateTime?
+  closedReason String?
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  category   SupportCategory?    @relation(fields: [categoryId], references: [id])
+  priority   SupportPriority?    @relation(fields: [priorityId], references: [id])
+  status     SupportStatus       @relation(fields: [statusId], references: [id])
+  pic        User?               @relation("AssignedPIC", fields: [picId], references: [id])
+  source     WhatsAppSource?     @relation(fields: [sourceId], references: [id])
+  messages   SupportTicketMessage[]
+  updates    SupportTicketUpdate[]
+  reports    SupportReportTicket[]
+
+  @@index([statusId])
+  @@index([priorityId])
+  @@index([categoryId])
+  @@index([picId])
+  @@index([createdAt])
+}
+
+model SupportTicketMessage {
+  id        String @id @default(cuid())
+  ticketId  String
+  messageId String @unique
+
+  ticket  SupportTicket   @relation(fields: [ticketId], references: [id])
+  message WhatsAppMessage @relation(fields: [messageId], references: [id])
+
+  @@index([ticketId])
+}
+
+model SupportTicketUpdate {
+  id          String   @id @default(cuid())
+  ticketId    String
+  userId      String?
+  fromStatus  String?
+  toStatus    String?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id])
+  user   User?         @relation(fields: [userId], references: [id])
+
+  @@index([ticketId])
+}
+
+model SupportReport {
+  id          String   @id @default(cuid())
+  periodType  String   // daily, weekly, monthly
+  periodStart DateTime
+  periodEnd   DateTime
+  title       String
+  content     String   // JSON or markdown
+  generatedAt DateTime @default(now())
+  generatedBy String?
+
+  tickets SupportReportTicket[]
+}
+
+model SupportReportTicket {
+  id       String @id @default(cuid())
+  reportId String
+  ticketId String
+
+  report SupportReport   @relation(fields: [reportId], references: [id])
+  ticket SupportTicket   @relation(fields: [ticketId], references: [id])
+
+  @@index([reportId])
+  @@index([ticketId])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String   // ticket.create, ticket.status_change, ticket.close, message.classify, etc.
+  entity    String   // ticket, message, user, report
+  entityId  String?
+  detail    String?  // JSON with old/new values
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([createdAt])
+}
