@@ -196,3 +196,10 @@ Follow these strict execution rules:
 * **NEVER** execute `playwright-cli screenshot`.
 * **NEVER** request a visual image file for layout debugging.
 * All visual verification must be reverse-engineered using text-based tree structures and geometric layout boxes.
+
+
+## Menggunakan Puppeteer untuk otomatisasi WhatsApp berisiko terkena blokir (ban) 
+- Sembunyikan Indikator BotGunakan plugin puppeteer-extra dengan puppeteer-extra-plugin-stealth. Plugin ini menyembunyikan properti JavaScript yang biasanya mengungkap browser otomatis.
+  `npm install puppeteer puppeteer-extra puppeteer-extra-plugin-stealth`
+- Gunakan Sesi yang Ada (Persistent Session) `./whatsapp-session` Simpan sesi di direktori ini
+- Tambahkan ini sebelum mengirim pesan berikutnya await delay(Math.floor(Math.random() * 5000) + 3000); 

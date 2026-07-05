@@ -1,6 +1,7 @@
 import { getDb } from "../db/index.js";
+import { getPortUrl } from "../ports.js";
 
-const ENV_URL = process.env.WORKER_API_URL || "http://127.0.0.1:9494";
+const ENV_URL = process.env.WORKER_API_URL || getPortUrl("worker");
 
 let cachedUrl: string | null = null;
 let lastFetch = 0;

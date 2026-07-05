@@ -4,10 +4,15 @@ import Database from "better-sqlite3";
 
 let prisma: PrismaClient;
 
+function getDbUrl(): string {
+  return process.env.DATABASE_URL?.replace(/^file:/, "") || "dev.db";
+}
+
 export function getDb(): PrismaClient {
   if (!prisma) {
-    const connection = new Database("dev.db");
-    const adapter = new PrismaBetterSqlite3({ url: "file:./dev.db" });
+    const dbPath = getDbUrl();
+    const connection = new Database(dbPath);
+    const adapter = new PrismaBetterSqlite3({ url: `file:${dbPath}` });
     prisma = new PrismaClient({ adapter });
   }
   return prisma;

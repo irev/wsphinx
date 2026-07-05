@@ -1192,7 +1192,7 @@
 									<div class="space-y-3">
 										<div class="space-y-1">
 											<label for="wa_worker_url" class="text-xs text-muted-foreground">Worker API URL</label>
-											<input id="wa_worker_url" type="text" bind:value={waSettings.wa_worker_url} class="wt-input text-xs font-mono w-full" placeholder="http://127.0.0.1:3457" />
+											<input id="wa_worker_url" type="text" bind:value={waSettings.wa_worker_url} class="wt-input text-xs font-mono w-full" placeholder="http://127.0.0.1:9494" />
 											<button onclick={() => saveWaSetting('wa_worker_url', waSettings.wa_worker_url)} disabled={waSettingsSaving} class="kt-btn kt-btn-xs kt-btn-primary mt-1">Simpan URL</button>
 										</div>
 										<label class="flex items-center gap-3 cursor-pointer">

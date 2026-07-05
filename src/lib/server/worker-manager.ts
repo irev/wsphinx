@@ -5,11 +5,11 @@ import net from "node:net";
 import http from "node:http";
 import { getDb } from "./db/index.js";
 import { getWorkerUrl } from "./whatsapp/worker-url.js";
+import { PORTS } from "./ports.js";
 
 const PROJECT_ROOT = process.cwd();
 const WORKER_SCRIPT = path.resolve(PROJECT_ROOT, "worker/index.ts");
 const LOG_DIR = path.resolve(PROJECT_ROOT, "worker/logs");
-const WORKER_PORT = parseInt(process.env.WORKER_API_PORT || "9494");
 
 function ensureLogDir() {
   if (!fs.existsSync(LOG_DIR)) fs.mkdirSync(LOG_DIR, { recursive: true });
@@ -139,7 +139,7 @@ class WorkerManager {
 
     const workerUrl = await getWorkerUrl();
     const portMatch = workerUrl.match(/:(\d+)$/);
-    const targetPort = portMatch ? parseInt(portMatch[1]) : WORKER_PORT;
+    const targetPort = portMatch ? parseInt(portMatch[1]) : PORTS.worker;
 
     const portFree = await checkPort(targetPort);
     if (!portFree) {

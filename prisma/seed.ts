@@ -2,7 +2,8 @@ import { PrismaClient } from "../generated/prisma/client.ts";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import bcrypt from "bcryptjs";
 
-const adapter = new PrismaBetterSqlite3({ url: "file:./dev.db" });
+const dbUrl = process.env.DATABASE_URL || "file:./dev.db";
+const adapter = new PrismaBetterSqlite3({ url: dbUrl });
 const prisma = new PrismaClient({ adapter });
 
 const PASSWORD_HASH = bcrypt.hashSync("admin123", 10);
@@ -66,7 +67,7 @@ async function main() {
     prisma.appSetting.upsert({ where: { key: "wa_ignore_keywords" }, update: {}, create: { key: "wa_ignore_keywords", value: "spam,promo,info,testing" } }),
     prisma.appSetting.upsert({ where: { key: "wa_business_hours" }, update: {}, create: { key: "wa_business_hours", value: '{"monday":{"start":"08:00","end":"17:00"},"tuesday":{"start":"08:00","end":"17:00"},"wednesday":{"start":"08:00","end":"17:00"},"thursday":{"start":"08:00","end":"17:00"},"friday":{"start":"08:00","end":"17:00"},"saturday":{"start":"08:00","end":"12:00"}}' } }),
     prisma.appSetting.upsert({ where: { key: "wa_session_persistence" }, update: {}, create: { key: "wa_session_persistence", value: "true" } }),
-    prisma.appSetting.upsert({ where: { key: "wa_worker_url" }, update: {}, create: { key: "wa_worker_url", value: "http://127.0.0.1:9494" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_worker_url" }, update: {}, create: { key: "wa_worker_url", value: process.env.WORKER_API_URL || "http://127.0.0.1:9494" } }),
     prisma.appSetting.upsert({ where: { key: "wa_worker_auto_restart" }, update: {}, create: { key: "wa_worker_auto_restart", value: "true" } }),
     prisma.appSetting.upsert({ where: { key: "wa_worker_max_reconnect" }, update: {}, create: { key: "wa_worker_max_reconnect", value: "10" } }),
     prisma.appSetting.upsert({ where: { key: "wa_worker_qr_interval" }, update: {}, create: { key: "wa_worker_qr_interval", value: "15" } }),

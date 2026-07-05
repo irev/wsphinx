@@ -256,7 +256,19 @@ export class WebJSAdapter implements WhatsAppReader {
     }
   }
 
+  private async loadReconnectSettings() {
+    try {
+      const db = getDb();
+      const setting = await db.appSetting.findUnique({ where: { key: "wa_worker_max_reconnect" } });
+      if (setting?.value) {
+        const n = parseInt(setting.value);
+        if (!isNaN(n) && n > 0) this.maxReconnectAttempts = n;
+      }
+    } catch { /* fallback to existing value */ }
+  }
+
   private async scheduleReconnect() {
+    await this.loadReconnectSettings();
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
       console.error("Max reconnect attempts reached. Give up.");
       return;

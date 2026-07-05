@@ -5,6 +5,7 @@ import path from "node:path";
 import http from "node:http";
 import { WebJSAdapter } from "../src/lib/server/whatsapp/webjs-adapter.js";
 import { findChromeExecutable } from "../src/lib/server/whatsapp/chrome-helper.js";
+import { PORTS } from "../src/lib/server/ports.js";
 import { getDb } from "../src/lib/server/db/index.js";
 import { classifyMessage } from "../src/lib/server/classifier/index.js";
 import { maybeAutoReply } from "../src/lib/server/auto-reply/index.js";
@@ -131,7 +132,7 @@ async function main() {
     }
   });
 
-  const API_PORT = parseInt(process.env.WORKER_API_PORT || "9494");
+  const API_PORT = parseInt(process.env.WORKER_API_PORT || String(PORTS.worker));
   const apiServer = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Allow-Origin", "*");
