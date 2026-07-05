@@ -318,8 +318,20 @@ textarea.kt-input {
 }
 
 /* ── Background colors (not in precompiled styles.css) ── */
+.bg-success { background-color: var(--color-green-500); }
+.bg-warning { background-color: var(--color-amber-500); }
+.bg-destructive { background-color: var(--destructive, var(--color-red-500)); }
 .bg-info { background-color: var(--color-violet-500); }
 .bg-info\/10 { background-color: color-mix(in srgb, var(--color-violet-500) 10%, transparent); }
+.bg-muted-foreground { background-color: var(--muted-foreground); }
 
 /* ── Sizing utilities (not in precompiled styles.css) ── */
 .size-56 { width: 14rem; height: 14rem; }
+
+/* ── Animations (not in precompiled styles.css) ── */
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping {
+  75%, 100% { transform: scale(2); opacity: 0; }
+}
