@@ -1,8 +1,10 @@
 import type { Handle } from "@sveltejs/kit";
-import { redirect } from "@sveltejs/kit";
+import { redirect, json } from "@sveltejs/kit";
 import { verifyToken, COOKIE_NAME } from "$lib/server/auth/session.js";
 import { getDb } from "$lib/server/db/index.js";
 import { sequence } from "@sveltejs/kit/hooks";
+import { maskPhone } from "$lib/utils/mask.js";
+import { sanitize } from "$lib/utils/sanitize.js";
 
 const publicPaths = ["/api/auth/login", "/login", "/_app", "/media"];
 
@@ -74,12 +76,15 @@ const securityHandle: Handle = async ({ event, resolve }) => {
   response.headers.set("x-frame-options", "DENY");
   response.headers.set("x-content-type-options", "nosniff");
   response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  response.headers.set("cross-origin-opener-policy", "same-origin");
+  response.headers.set("cross-origin-resource-policy", "same-origin");
+  response.headers.set("x-permitted-cross-domain-policies", "none");
+
+  const csp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'";
+  response.headers.set("content-security-policy", csp);
 
   if (process.env.NODE_ENV === "production") {
-    response.headers.set(
-      "content-security-policy",
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'"
-    );
     response.headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
   }
 
@@ -113,4 +118,71 @@ const rateLimitHandle: Handle = async ({ event, resolve }) => {
   return resolve(event);
 };
 
-export const handle = sequence(rateLimitHandle, securityHandle, authHandle);
+function maskPhoneFields(obj: unknown): unknown {
+  if (typeof obj === "string") {
+    if (/^\+?62\d{6,15}$/.test(obj) || /^08\d{6,14}$/.test(obj)) {
+      return maskPhone(obj);
+    }
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(maskPhoneFields);
+  }
+  if (obj && typeof obj === "object") {
+    const masked: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(obj as Record<string, unknown>)) {
+      if (["phone", "fromPhone", "reporterPhone", "pushname"].includes(key) && typeof val === "string") {
+        masked[key] = maskPhone(val);
+      } else {
+        masked[key] = maskPhoneFields(val);
+      }
+    }
+    return masked;
+  }
+  return obj;
+}
+
+const maskHandle: Handle = async ({ event, resolve }) => {
+  const response = await resolve(event);
+  if (!event.url.pathname.startsWith("/api/")) return response;
+  if (!response.body) return response;
+
+  const ct = response.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) return response;
+
+  try {
+    const text = await response.text();
+    const parsed = JSON.parse(text);
+    const masked = maskPhoneFields(parsed);
+    return json(masked, { status: response.status, headers: Object.fromEntries(response.headers) });
+  } catch {
+    return response;
+  }
+};
+
+const sanitizeHandle: Handle = async ({ event, resolve }) => {
+  if (!event.url.pathname.startsWith("/api/")) return resolve(event);
+  const method = event.request.method;
+  if (!["POST", "PUT", "PATCH"].includes(method)) return resolve(event);
+  const ct = event.request.headers.get("content-type") || "";
+  if (!ct.includes("application/json")) return resolve(event);
+
+  try {
+    const cloned = event.request.clone();
+    const text = await cloned.text();
+    if (!text) return resolve(event);
+    const parsed = JSON.parse(text);
+    const cleaned = sanitize(parsed);
+    const newBody = JSON.stringify(cleaned);
+    const newRequest = new Request(event.request.url, {
+      method: event.request.method,
+      headers: event.request.headers,
+      body: newBody,
+    });
+    event.request = newRequest;
+  } catch {}
+
+  return resolve(event);
+};
+
+export const handle = sequence(rateLimitHandle, sanitizeHandle, securityHandle, maskHandle, authHandle);

@@ -37,6 +37,7 @@ export const PUT: RequestHandler = async (event) => {
       ...(body.level !== undefined && { level: body.level }),
       ...(body.color !== undefined && { color: body.color }),
       ...(body.description !== undefined && { description: body.description }),
+      ...(body.active !== undefined && { active: body.active }),
     },
   });
 

@@ -74,6 +74,12 @@ async function main() {
     if (state.qrCode) {
       if (!existsSync(QR_DIR)) mkdirSync(QR_DIR, { recursive: true });
       QRCode.toFile(QR_FILE, state.qrCode, { type: "png", width: 300, margin: 2, color: { dark: "#111827", light: "#ffffff" } }).catch(() => {});
+      // Hapus QR setelah 30 detik jika tidak ter-scan
+      setTimeout(() => {
+        if (adapter.getStatus().status !== "connected") {
+          try { if (existsSync(QR_FILE)) unlinkSync(QR_FILE); } catch {}
+        }
+      }, 30_000);
     }
 
     if (state.status === "connected") {

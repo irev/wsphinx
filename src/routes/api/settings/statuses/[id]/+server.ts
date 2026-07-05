@@ -28,6 +28,7 @@ export const PUT: RequestHandler = async (event) => {
       ...(body.isClosed !== undefined && { isClosed: body.isClosed }),
       ...(body.color !== undefined && { color: body.color }),
       ...(body.description !== undefined && { description: body.description }),
+      ...(body.active !== undefined && { active: body.active }),
     },
   });
 

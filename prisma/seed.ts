@@ -8,6 +8,11 @@ const prisma = new PrismaClient({ adapter });
 
 const PASSWORD_HASH = bcrypt.hashSync("admin123", 10);
 
+const SEED_PHONE_PIC = process.env.SEED_PHONE_PIC || "6281111111111";
+const SEED_PHONE_PIC2 = process.env.SEED_PHONE_PIC2 || "6281111111112";
+const SEED_PHONE_ADMIN = process.env.SEED_PHONE_ADMIN || "6281111111113";
+const SEED_PHONE_SOURCE = process.env.WHATSAPP_PHONE || SEED_PHONE_PIC;
+
 async function main() {
   const priorities = await Promise.all([
     prisma.supportPriority.upsert({ where: { level: 1 }, update: {}, create: { name: "Critical", level: 1, color: "#dc2626", description: "Layanan utama berhenti total" } }),
@@ -41,9 +46,9 @@ async function main() {
   ]);
 
   const pics = await Promise.all([
-    prisma.user.upsert({ where: { phone: "6281111111111" }, update: { name: "PIC Satu", role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Satu", phone: "6281111111111", role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH } }),
-    prisma.user.upsert({ where: { phone: "6281111111112" }, update: { name: "PIC Dua", role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Dua", phone: "6281111111112", role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH } }),
-    prisma.user.upsert({ where: { phone: "6281111111113" }, update: { name: "Admin System", role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH }, create: { name: "Admin System", phone: "6281111111113", role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH } }),
+    prisma.user.upsert({ where: { phone: SEED_PHONE_PIC }, update: { name: "PIC Satu", role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Satu", phone: SEED_PHONE_PIC, role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH } }),
+    prisma.user.upsert({ where: { phone: SEED_PHONE_PIC2 }, update: { name: "PIC Dua", role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Dua", phone: SEED_PHONE_PIC2, role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH } }),
+    prisma.user.upsert({ where: { phone: SEED_PHONE_ADMIN }, update: { name: "Admin System", role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH }, create: { name: "Admin System", phone: SEED_PHONE_ADMIN, role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH } }),
   ]);
 
   let source = await prisma.whatsAppSource.findFirst();
@@ -52,7 +57,7 @@ async function main() {
       data: {
         name: "Grup Support IT",
         type: "group",
-        phone: "6281111111111",
+        phone: SEED_PHONE_SOURCE,
         description: "Grup WhatsApp utama untuk laporan technical support",
       },
     });
