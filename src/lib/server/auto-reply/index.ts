@@ -1,5 +1,6 @@
-import type { WhatsAppReader, WhatsAppMessage } from "../whatsapp/adapter.js";
+import type { WhatsAppMessage } from "../whatsapp/adapter.js";
 import { getDb } from "../db/index.js";
+import { enqueueOutgoing } from "../whatsapp/outbox.js";
 
 interface ReplyContext {
   msg: WhatsAppMessage;
@@ -17,7 +18,7 @@ function compileTemplate(template: string, ctx: ReplyContext): string {
 }
 
 export async function maybeAutoReply(
-  adapter: WhatsAppReader,
+  _adapter: unknown,
   msg: WhatsAppMessage,
   ctx?: { ticketNumber?: string; summary?: string },
 ): Promise<void> {
@@ -34,5 +35,14 @@ export async function maybeAutoReply(
     summary: ctx?.summary,
   });
 
-  await adapter.sendMessage(msg.chatId, compiled);
+  const result = await enqueueOutgoing({
+    chatId: msg.chatId,
+    phone: msg.fromPhone,
+    message: compiled,
+    source: "auto_reply",
+  });
+
+  if (!result.success) {
+    console.log("[AutoReply] Skipped: %s (chatId=%s)", result.error, msg.chatId);
+  }
 }

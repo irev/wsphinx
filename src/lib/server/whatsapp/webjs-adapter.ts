@@ -18,6 +18,7 @@ import type {
 } from "./adapter.js";
 import { findChromeExecutable } from "./chrome-helper.js";
 import { getDb } from "../db/index.js";
+import { isStopKeyword, applyOptOut, ensureContactPolicy } from "./contact-policy.js";
 
 const SESSION_BASE_DIR = path.resolve(process.env.WA_SESSION_PATH || "whatsapp-session");
 
@@ -220,6 +221,24 @@ export class WebJSAdapter implements WhatsAppReader {
       };
 
       await this.saveMessage(waMsg);
+
+      await ensureContactPolicy(fromPhone, chatId);
+
+      if (await isStopKeyword(body)) {
+        await applyOptOut(fromPhone);
+        try {
+          const db = getDb();
+          await db.auditLog.create({
+            data: {
+              action: "contact.opt_out",
+              entity: "contact",
+              entityId: waMsg.id,
+              detail: JSON.stringify({ phone: fromPhone, keyword: body.trim(), source: "inbound_message" }),
+            },
+          });
+        } catch {}
+        return;
+      }
 
       if (source.active) {
         this.enqueueMessage(waMsg);

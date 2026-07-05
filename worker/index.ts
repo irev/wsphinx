@@ -9,6 +9,9 @@ import { PORTS } from "../src/lib/server/ports.js";
 import { getDb } from "../src/lib/server/db/index.js";
 import { classifyMessage } from "../src/lib/server/classifier/index.js";
 import { maybeAutoReply } from "../src/lib/server/auto-reply/index.js";
+import { processNextOutgoing, enqueueOutgoing, getOutboxStats } from "../src/lib/server/whatsapp/outbox.js";
+import { isBusinessHour } from "../src/lib/server/whatsapp/business-hours.js";
+import { checkContactPolicy, getOrCreatePolicy } from "../src/lib/server/whatsapp/contact-policy.js";
 
 const require = createRequire(import.meta.url);
 const QRCodeTerminal = require("qrcode-terminal");
@@ -169,14 +172,24 @@ async function main() {
         let body = "";
         req.on("data", (chunk: string) => (body += chunk));
         req.on("end", async () => {
-          const { chatId, text } = JSON.parse(body);
+          const { chatId, text, phone } = JSON.parse(body);
           if (!chatId || !text) {
             res.statusCode = 400;
             res.end(JSON.stringify({ error: "Missing chatId or text" }));
             return;
           }
-          await adapter.sendMessage(chatId, text);
-          res.end(JSON.stringify({ ok: true }));
+          const result = await enqueueOutgoing({
+            chatId,
+            phone: phone || chatId.replace(/@[cg]\.us$/, ""),
+            message: text,
+            source: "manual_api",
+          });
+          if (!result.success) {
+            res.statusCode = 429;
+            res.end(JSON.stringify({ error: result.error, blockedReason: result.blockedReason }));
+            return;
+          }
+          res.end(JSON.stringify({ ok: true, outboxId: result.outboxId }));
         });
         return;
       } else if (req.method === "GET" && path === "/api/me") {
@@ -201,6 +214,38 @@ async function main() {
         await adapter.clearSession();
         const state = adapter.getStatus();
         res.end(JSON.stringify({ data: { status: state.status } }));
+      } else if (req.method === "GET" && path === "/api/outbox") {
+        const stats = await getOutboxStats();
+        const statusFilter = parsedUrl.searchParams.get("status") || "pending";
+        const limit = parseInt(parsedUrl.searchParams.get("limit") || "50");
+        const db = getDb();
+        const items = await db.whatsAppOutbox.findMany({
+          where: statusFilter === "all" ? {} : { status: statusFilter },
+          orderBy: { createdAt: "desc" },
+          take: limit,
+        });
+        res.end(JSON.stringify({ data: { stats, items } }));
+      } else if (req.method === "GET" && path === "/api/contacts/policy") {
+        const db = getDb();
+        const policies = await db.whatsAppContactPolicy.findMany({
+          orderBy: { updatedAt: "desc" },
+          take: 100,
+        });
+        res.end(JSON.stringify({ data: policies }));
+      } else if (req.method === "POST" && path === "/api/outbox/retry") {
+        let body = "";
+        req.on("data", (chunk: string) => (body += chunk));
+        req.on("end", async () => {
+          const { id } = JSON.parse(body);
+          if (!id) { res.statusCode = 400; res.end(JSON.stringify({ error: "Missing id" })); return; }
+          const db = getDb();
+          await db.whatsAppOutbox.update({
+            where: { id },
+            data: { status: "pending", retryCount: 0, errorMessage: null },
+          });
+          res.end(JSON.stringify({ ok: true }));
+        });
+        return;
       } else if (req.method === "GET" && path === "/api/health") {
         const state = adapter.getStatus();
         const info = adapter.getReconnectInfo();
@@ -227,6 +272,20 @@ async function main() {
   apiServer.listen(API_PORT, "127.0.0.1", () => {
     console.log(`Worker API listening on http://127.0.0.1:${API_PORT}`);
   });
+
+  async function processOutboxLoop() {
+    while (true) {
+      try {
+        if (adapter.getStatus().status === "connected") {
+          await processNextOutgoing((chatId, text) => adapter.sendMessage(chatId, text));
+        }
+      } catch (e) {
+        console.error("[Outbox] Process error:", (e as Error).message);
+      }
+      await new Promise((r) => setTimeout(r, 5000 + Math.random() * 5000));
+    }
+  }
+  processOutboxLoop().catch((e) => console.error("[Outbox] Loop fatal:", e));
 
   try {
     await adapter.connect();

@@ -72,6 +72,13 @@ async function main() {
     prisma.appSetting.upsert({ where: { key: "wa_worker_max_reconnect" }, update: {}, create: { key: "wa_worker_max_reconnect", value: "10" } }),
     prisma.appSetting.upsert({ where: { key: "wa_worker_qr_interval" }, update: {}, create: { key: "wa_worker_qr_interval", value: "15" } }),
     prisma.appSetting.upsert({ where: { key: "wa_llm_consent" }, update: {}, create: { key: "wa_llm_consent", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_max_messages_per_hour" }, update: {}, create: { key: "wa_max_messages_per_hour", value: "20" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_min_gap_per_number_seconds" }, update: {}, create: { key: "wa_min_gap_per_number_seconds", value: "120" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_max_consecutive_failures" }, update: {}, create: { key: "wa_max_consecutive_failures", value: "5" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_stop_keywords" }, update: {}, create: { key: "wa_stop_keywords", value: "STOP,BERHENTI,UNSUBSCRIBE,STOP ALL,CANCEL,HENTIKAN" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_auto_reply_max_per_chat_per_day" }, update: {}, create: { key: "wa_auto_reply_max_per_chat_per_day", value: "3" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_auto_reply_cooldown_minutes" }, update: {}, create: { key: "wa_auto_reply_cooldown_minutes", value: "5" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_after_hours_template" }, update: {}, create: { key: "wa_after_hours_template", value: "Halo {name}, terima kasih atas laporannya. Saat ini di luar jam operasional support (Senin-Jumat 08:00-17:00, Sabtu 08:00-12:00). Tim support akan menindaklanjuti laporan Anda pada jam kerja berikutnya. Terima kasih." } }),
   ]);
 
   console.log("Seed completed (idempotent)");
