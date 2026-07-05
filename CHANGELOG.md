@@ -6,6 +6,13 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 
 ## Unreleased
 
+### Added
+- **Profil WA di header**: nama (pushname), nomor telepon, dan foto profil dari akun WhatsApp yang terkoneksi — fallback ke "PIC Satu"/"Teknisi" jika belum loaded
+- `getMe()` method di `WhatsAppReader` interface & `WebJSAdapter` — baca `client.info.pushname`, `client.info.wid`, `client.info.platform`
+- Worker endpoint `GET /api/me`
+- Proxy SvelteKit `GET /api/whatsapp/me`
+- `$lib/stores/wa-profile.svelte.ts` — auto-poll profil tiap 10 detik, foto tiap 60 detik
+
 ### Fixed
 - **CSS**: tambah utility class `bg-success`, `bg-warning`, `bg-destructive`, `bg-muted-foreground` dan `animate-ping` + `@keyframes ping` di `custom.css` — sebelumnya tidak terdefinisi, dot status WhatsApp tidak berwarna
 - Settings → Connection card: `waDisconnect`, `waDisconnectAndClear`, `waReconnect` — refresh API calls (status + session info) sebelum loading spinner dimatikan
