@@ -1,7 +1,11 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
+import { isAdminOrPic } from "$lib/server/auth/guard.js";
 
-export const PUT: RequestHandler = async ({ params, request }) => {
+export const PUT: RequestHandler = async (event) => {
+  const guard = isAdminOrPic(event);
+  if (guard) return guard;
+  const { params, request } = event;
   const db = getDb();
   const { id } = params;
   const body = await request.json();
@@ -28,7 +32,10 @@ export const PUT: RequestHandler = async ({ params, request }) => {
   return json({ data: source });
 };
 
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async (event) => {
+  const guard = isAdminOrPic(event);
+  if (guard) return guard;
+  const { params } = event;
   const db = getDb();
   const { id } = params;
 
@@ -37,7 +44,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
     return json({ error: "Source tidak ditemukan" }, { status: 404 });
   }
 
-  await db.whatsAppSource.delete({ where: { id } });
+  await db.whatsAppSource.update({ where: { id }, data: { active: false } });
 
   return json({ data: { id } });
 };

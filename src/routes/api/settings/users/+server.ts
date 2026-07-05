@@ -1,6 +1,8 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
+import { isAdmin } from "$lib/server/auth/guard.js";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
@@ -8,6 +10,7 @@ const createSchema = z.object({
   email: z.string().email().optional().or(z.literal("")),
   role: z.enum(["admin", "pic", "user"]).optional(),
   active: z.boolean().optional(),
+  password: z.string().min(4).max(100).optional(),
 });
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -32,7 +35,10 @@ export const GET: RequestHandler = async ({ url }) => {
   return json({ data, total, skip, take });
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const guard = isAdmin(event);
+  if (guard) return guard;
+  const { request } = event;
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -45,6 +51,10 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ error: `Nomor ${parsed.data.phone} sudah terdaftar` }, { status: 409 });
   }
 
+  const passwordHash = parsed.data.password
+    ? bcrypt.hashSync(parsed.data.password, 10)
+    : null;
+
   const data = await db.user.create({
     data: {
       name: parsed.data.name,
@@ -52,6 +62,7 @@ export const POST: RequestHandler = async ({ request }) => {
       email: parsed.data.email || null,
       role: parsed.data.role || "user",
       active: parsed.data.active ?? true,
+      passwordHash,
     },
   });
 

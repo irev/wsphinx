@@ -18,7 +18,7 @@ async function getNextTicketNumber(): Promise<string> {
   return `TKT-${String(next).padStart(5, "0")}`;
 }
 
-export async function createTicket(input: TicketCreateInput) {
+export async function createTicket(input: TicketCreateInput, userId?: string) {
   const db = getDb();
 
   const defaultStatus = await db.supportStatus.findFirst({
@@ -71,6 +71,7 @@ export async function createTicket(input: TicketCreateInput) {
 
   await db.auditLog.create({
     data: {
+      userId,
       action: "ticket.create",
       entity: "ticket",
       entityId: ticket.id,

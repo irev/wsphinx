@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { auth } from './auth.svelte.js';
 
 class WaProfileStore {
 	pushname = $state('');
@@ -15,6 +16,7 @@ let _intervalId: ReturnType<typeof setInterval> | undefined;
 
 async function _fetch() {
 	try {
+		if (auth.loading || !auth.user) return;
 		const res = await fetch('/api/whatsapp/me');
 		if (res.ok) {
 			const d = await res.json();

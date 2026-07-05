@@ -10,7 +10,7 @@ const classifySchema = z.object({
   previousMessages: z.array(z.string().max(500)).max(10).optional(),
 });
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
   let raw: unknown;
   try {
     raw = await request.json();
@@ -68,6 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
           entity: "message",
           entityId: msg.id,
           detail: JSON.stringify(result),
+          userId: locals.user?.id || null,
         },
       });
     }

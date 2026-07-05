@@ -1,7 +1,31 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { waStatus } from '$lib/stores/wa-status.svelte';
 
 	let currentPath = $derived($page.url.pathname);
+
+	function statusColor(s: string) {
+		if (s === 'connected') return 'bg-success';
+		if (s === 'scanning_qr' || s === 'reconnecting') return 'bg-warning';
+		if (s === 'expired') return 'bg-destructive';
+		if (s === 'worker_offline' || s === 'loading') return 'bg-destructive';
+		if (s === 'initializing') return 'bg-warning';
+		return 'bg-muted-foreground/30';
+	}
+
+	function statusLabel(s: string) {
+		const m: Record<string, string> = {
+			connected: 'Terhubung',
+			scanning_qr: 'Scan QR',
+			reconnecting: 'Mengulang...',
+			expired: 'Expired',
+			disconnected: 'Terputus',
+			initializing: 'Menghubungkan...',
+			worker_offline: 'Offline',
+			loading: 'Memuat...',
+		};
+		return m[s] || '—';
+	}
 	let openMenu = $state<string | null>(null);
 	let openTimer: ReturnType<typeof setTimeout> | undefined = $state();
 	let closeTimer: ReturnType<typeof setTimeout> | undefined = $state();
@@ -103,7 +127,7 @@
 						</span>
 					</span>
 				</a>
-				<div class="kt-menu-dropdown kt-menu-default gap-0 min-w-[220px] absolute top-full start-1/2 -translate-x-1/2 z-50 mt-2">
+				<div class="kt-menu-dropdown kt-menu-default gap-0 min-w-[220px] absolute top-full start-1/2 -translate-x-1/2 z-50 mt-2 bg-popover">
 					<div class="kt-menu-item w-full {isActive('/inbox') ? 'active' : ''}">
 						<a class="kt-menu-link" href="/inbox">
 							<span class="kt-menu-icon"><i class="ki-filled ki-messages"></i></span>
@@ -154,6 +178,11 @@
 				</a>
 			</div>
 
+		</div>
+		<!-- WA Status Indicator -->
+		<div class="hidden lg:flex items-center gap-1.5 text-2xs text-muted-foreground shrink-0" title={statusLabel(waStatus.status)}>
+			<span class="size-2 rounded-full {statusColor(waStatus.status)}"></span>
+			<span class="font-medium">WA: {statusLabel(waStatus.status)}</span>
 		</div>
 	</div>
 </div>

@@ -141,7 +141,7 @@
 			</div>
 			<div class="dialog-body">
 				{#if loading}
-					<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
+					<div class="flex items-center justify-center py-10"><div class="wt-spinner-ring size-6"></div></div>
 				{:else if ticket}
 					<div class="dialog-grid">
 						<div class="dialog-main">
@@ -161,7 +161,7 @@
 								</div>
 								<div>
 									<span class="text-2xs text-muted-foreground">Kategori</span>
-									<select bind:value={editCategory} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+									<select bind:value={editCategory} class="wt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
 										<option value="">-</option>
 										{#each settings.categories as cat}
 											<option value={cat.id}>{cat.name}</option>
@@ -170,7 +170,7 @@
 								</div>
 								<div>
 									<span class="text-2xs text-muted-foreground">Prioritas</span>
-									<select bind:value={editPriority} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+									<select bind:value={editPriority} class="wt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
 										<option value="">-</option>
 										{#each settings.priorities as p}
 											<option value={p.id}>{p.name}</option>
@@ -179,7 +179,7 @@
 								</div>
 								<div>
 									<span class="text-2xs text-muted-foreground">PIC</span>
-									<select bind:value={editPic} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+									<select bind:value={editPic} class="wt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
 										<option value="">-</option>
 										{#each settings.pics as pic}
 											<option value={pic.id}>{pic.name}</option>
@@ -188,7 +188,7 @@
 								</div>
 								<div>
 									<span class="text-2xs text-muted-foreground">Status</span>
-									<select bind:value={editStatus} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+									<select bind:value={editStatus} class="wt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
 										{#each settings.statuses as st}
 											<option value={st.id}>{st.name}</option>
 										{/each}
@@ -211,7 +211,7 @@
 									<i class="ki-filled ki-check-circle text-sm"></i> {saving ? '...' : 'Simpan Perubahan'}
 								</Button>
 							</div>
-							<textarea bind:value={editNote} placeholder="Catatan perubahan (opsional)" class="kt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 mb-4" rows={3}></textarea>
+							<textarea bind:value={editNote} placeholder="Catatan perubahan (opsional)" class="wt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50 mb-4" rows={3}></textarea>
 
 							<div class="mb-4">
 								<h3 class="text-sm font-semibold text-mono mb-2">Ringkasan</h3>
@@ -238,7 +238,7 @@
 
 							{#if ticket.status?.name !== 'Closed' && ticket.status?.name !== 'Rejected/Invalid'}
 								<div class="flex items-center gap-2">
-									<input bind:value={closeReason} placeholder="Alasan penutupan (opsional)" class="kt-input border border-input rounded-lg px-3 py-2 text-sm flex-1 min-w-0" />
+									<input bind:value={closeReason} placeholder="Alasan penutupan (opsional)" class="wt-input border border-input rounded-lg px-3 py-2 text-sm flex-1 min-w-0" />
 									<Button variant="mono" onclick={doClose}><i class="ki-filled ki-check-circle text-sm"></i> Tutup Tiket</Button>
 								</div>
 							{/if}
@@ -253,9 +253,9 @@
 											<p class="text-2xs text-muted-foreground">{update.user?.name || 'System'} — {new Date(update.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
 											{#if update.fromStatus && update.toStatus && update.fromStatus !== update.toStatus}
 												<p class="text-sm text-foreground mt-0.5">
-													<span class="kt-badge kt-badge-sm kt-badge-stroke">{update.fromStatus}</span>
+													<span class="kt-badge kt-badge-sm wt-badge-stroke">{update.fromStatus}</span>
 													<i class="ki-filled ki-black-right text-xs text-muted-foreground mx-1"></i>
-													<span class="kt-badge kt-badge-sm kt-badge-stroke">{update.toStatus}</span>
+													<span class="kt-badge kt-badge-sm wt-badge-stroke">{update.toStatus}</span>
 												</p>
 											{/if}
 											{#if update.note}
@@ -284,6 +284,10 @@
 		align-items: center;
 		justify-content: center;
 		padding: 0.75rem;
+		background: rgba(0, 0, 0, 0.5);
+	}
+	:global(.dark) .dialog-overlay {
+		background: rgba(0, 0, 0, 0.7);
 	}
 	.dialog-card {
 		width: 100%;

@@ -12,3 +12,10 @@ export function getDb(): PrismaClient {
   }
   return prisma;
 }
+
+export function resetDb() {
+  if (prisma) {
+    prisma.$disconnect();
+    prisma = undefined as unknown as PrismaClient;
+  }
+}

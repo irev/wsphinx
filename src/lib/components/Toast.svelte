@@ -14,18 +14,18 @@
 	}
 
 	function bg(type: string) {
-		if (type === 'success') return 'bg-success/10 text-success border-success/20';
-		if (type === 'error') return 'bg-destructive/10 text-destructive border-destructive/20';
-		return 'bg-info/10 text-info border-info/20';
+		if (type === 'success') return 'wt-toast-success';
+		if (type === 'error') return 'wt-toast-error';
+		return 'wt-toast-info';
 	}
 </script>
 
 {#if items.length > 0}
 	<div class="fixed top-[calc(var(--header-height,64px)+0.75rem)] end-4 z-[9999] flex flex-col gap-2 max-w-sm">
 		{#each items as item (item.id)}
-			<div class="flex items-center gap-2.5 px-4 py-3 rounded-lg border shadow-md text-sm font-medium animate-in slide-in-from-right animate-out fade-out {bg(item.type)}">
+			<div class="flex items-center gap-2.5 px-4 py-3 rounded-lg border shadow-md text-sm font-medium animate-in slide-in-from-right animate-out fade-out wt-toast {bg(item.type)}">
 				<i class="ki-filled {icon(item.type)} text-base"></i>
-				<span class="flex-1">{item.message}</span>
+				<span class="flex-1 text-foreground">{item.message}</span>
 				<button class="kt-btn kt-btn-icon kt-btn-dim size-5 shrink-0" onclick={() => removeToast(item.id)} aria-label="Tutup">
 					<i class="ki-filled ki-cross text-xs"></i>
 				</button>
@@ -44,5 +44,5 @@
 		to { opacity: 0; }
 	}
 	.animate-in { animation: slide-in-from-right 0.3s ease-out; }
-	.animate-out { animation: fade-out 0.3s ease-in forwards; }
+	.animate-out { animation: fade-out 0.3s ease-in 7.7s forwards; }
 </style>

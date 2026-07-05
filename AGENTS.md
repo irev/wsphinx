@@ -9,6 +9,16 @@ Core entities: Customer, WhatsApp Source/Group, Message, Support Ticket, Categor
 ## CHANGELOG
 
 Update `CHANGELOG.md` whenever there are project changes.
+Anda wajib menerapkan flow ini disetiap perubaan yang dilakukan: Buat rencana implementasi yang akan di terapkan, audit yang akan terpengaruh atas perubahan ini. untuk jadi perbaikan/penyesuaian selanjutnya.
+
+
+# Phhone Number
+use `6281242535927` and `6281111111111` for real number test. 
+
+
+## ROADMAP
+
+Lihat `ROADMAP.md` untuk rencana implementasi 5 fase: Auth & Security Foundation → Worker Management → Worker Settings → Stats & History → Advanced Features. Juga berisi audit keamanan lengkap, area terdampak, dan matriks data sensitif.
 
 ## Stack
 
@@ -22,16 +32,16 @@ Update `CHANGELOG.md` whenever there are project changes.
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run dev` | Start SvelteKit dev server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm run seed` | Seed database — run once after migration |
-| `npm run worker` | Start standalone WhatsApp listener process |
-| `npm run check` | Type-check with svelte-check |
-| `npm run test` | Run unit + integration tests (Vitest) |
-| `npm run test:watch` | Run tests in watch mode |
+| Command                | Purpose                                    |
+| ---------------------- | ------------------------------------------ |
+| `npm run dev`        | Start SvelteKit dev server                 |
+| `npm run build`      | Production build                           |
+| `npm run preview`    | Preview production build                   |
+| `npm run seed`       | Seed database — run once after migration  |
+| `npm run worker`     | Start standalone WhatsApp listener process |
+| `npm run check`      | Type-check with svelte-check               |
+| `npm run test`       | Run unit + integration tests (Vitest)      |
+| `npm run test:watch` | Run tests in watch mode                    |
 
 **Order matters**: `npm run seed` before first dev run. Worker runs alongside dev server in separate terminal.
 
@@ -42,9 +52,9 @@ Update `CHANGELOG.md` whenever there are project changes.
 - **Prisma v7 driver adapter** — Uses `@prisma/adapter-better-sqlite3`. `PrismaClient` must be constructed with `{ adapter }`. The `getDb()` singleton in `src/lib/server/db/index.ts` handles the setup. Import `$lib/server/db/index.js` in API routes.
 - **Pipeline**: Message → Reader → Classifier → Ticket Builder → Dashboard → Recap
 
-# Template 
+# Template
 
-Gunakan referensi template `E:\PROJECT\YAPAYS\assistanceapy.kts\_ExcludeProject\template\metronic-tailwind-html-demos\dist` layoyt dan tataletaknya 
+Gunakan referensi template `E:\PROJECT\YAPAYS\assistanceapy.kts\_ExcludeProject\template\metronic-tailwind-html-demos\dist` layoyt dan tataletaknya
 
 ## Project structure
 
@@ -89,8 +99,11 @@ Key relationships: message → ticket (1:1 via join table), ticket → updates (
 
 - **Timezone**: `Asia/Jakarta` (display only — DB stores UTC)
 - **Sensitive data** (phone numbers, passwords, tokens, customer info): mask in reports; never display credentials in full; never send to external services without consent
-- **Audit log**: required for ticket.create, ticket.status_change, ticket.close, message.classify
-- **Soft delete**: never delete messages — use is_active / soft delete columns
+- **Audit log**: required for ticket.create, ticket.status_change, ticket.close, message.classify. Wajib menyertakan `userId`, `ipAddress`, `userAgent`.
+- **Soft delete**: never delete messages — use is_active / soft delete columns. Settings entities (users, categories, statuses, priorities, sources) juga soft-delete via `active: false`.
+- **Authentication**: Semua `/api/*` route wajib JWT valid (kecuali `/api/auth/login`). Login page di `/login`. Role-based access: `admin` = full, `pic` = tickets + messages, `user` = read-only.
+- **Phone numbers**: Mask di API response menggunakan `maskInApi()` helper. Anonimkan sebelum dikirim ke Ollama.
+- **Rate limit**: 100 request/menit per IP. Ditingkatkan untuk production.
 - **Do not commit**: `.env`, `*.db`, `.session-data/`, `generated/`, `node_modules/`
 
 ## AI / LLM rules
@@ -125,16 +138,16 @@ POST /api/chat/analyze            — Analisa AI batch messages
 
 ## UI pages
 
-| Route | Content |
-|---|---|
-| `/` | Dashboard KPIs (today, open, critical, resolved, top categories) |
-| `/inbox` | WhatsApp messages with classify button per message |
-| `/tickets` | Kanban board grouped by status, create ticket form |
-| `/tickets/[id]` | Ticket detail: messages, timeline, close action |
-| `/reports` | Generate (daily/weekly/monthly) and view saved reports |
-| `/settings` | View priorities, statuses, categories, PICs, WhatsApp sources |
-| `/sources` | Daftar grup & kontak WA (split panel: daftar kiri, viewer percakapan + analisa AI + kirim balasan kanan) |
-| `/audit` | Read-only audit log table |
+| Route             | Content                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| `/`             | Dashboard KPIs (today, open, critical, resolved, top categories)                                         |
+| `/inbox`        | WhatsApp messages with classify button per message                                                       |
+| `/tickets`      | Kanban board grouped by status, create ticket form                                                       |
+| `/tickets/[id]` | Ticket detail: messages, timeline, close action                                                          |
+| `/reports`      | Generate (daily/weekly/monthly) and view saved reports                                                   |
+| `/settings`     | View priorities, statuses, categories, PICs, WhatsApp sources                                            |
+| `/sources`      | Daftar grup & kontak WA (split panel: daftar kiri, viewer percakapan + analisa AI + kirim balasan kanan) |
+| `/audit`        | Read-only audit log table                                                                                |
 
 ## Validation rules
 
@@ -144,14 +157,16 @@ POST /api/chat/analyze            — Analisa AI batch messages
 
 ## Environment variables
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `DATABASE_URL` | `file:./dev.db` | SQLite database path |
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama endpoint |
-| `OLLAMA_MODEL` | `llama3.2` | LLM model for AI classification |
-| `WHATSAPP_SOURCE_NAME` | `Grup Support IT` | Nama source WhatsApp dari seed |
-| `WORKER_API_PORT` | `3457` | Port HTTP API worker untuk query live WA data |
-
+| Variable                 | Default                     | Purpose                                       |
+| ------------------------ | --------------------------- | --------------------------------------------- |
+| `DATABASE_URL`         | `file:./dev.db`           | SQLite database path                          |
+| `OLLAMA_URL`           | `http://localhost:11434`  | Ollama endpoint                               |
+| `OLLAMA_MODEL`         | `llama3.2`                | LLM model for AI classification               |
+| `WHATSAPP_SOURCE_NAME` | `Grup Support IT`         | Nama source WhatsApp dari seed                |
+| `WHATSAPP_PHONE`       | (wajib diisi)               | Nomor telepon default untuk source seed       |
+| `WORKER_API_PORT`      | `3457`                    | Port HTTP API worker untuk query live WA data |
+| `WORKER_API_URL`       | `http://127.0.0.1:3457`   | Worker API URL untuk proxy routes             |
+| `JWT_SECRET`           | (wajib diisi di production) | Secret key untuk JWT session                  |
 
 # Playwright-CLI Operational Rules (No-Screenshot Mode)
 
@@ -160,20 +175,24 @@ You are an AI Agent equipped with `playwright-cli`. To optimize token usage, max
 Follow these strict execution rules:
 
 ### 1. Page Analysis Strategy
+
 * **Primary Tool:** Always use `playwright-cli snapshot` to read the state, layout, and text contents of the page.
 * **Layout & Positioning:** Use `playwright-cli snapshot --boxes` if you need to analyze the physical layout, overlap issues, alignment, or responsive design bounds.
 * **Component Focus:** If the page is large, isolate your view by passing specific selectors to the snapshot command (e.g., `playwright-cli snapshot ".navbar"` or `playwright-cli snapshot "#footer"`).
 * **Text Extraction:** For quick text verification (e.g., checking for success or error messages), use JavaScript evaluation: `playwright-cli eval "document.body.innerText"`.
 
 ### 2. Element Interaction Policy
+
 * **Use Short IDs:** Rely strictly on the short element IDs (e.g., `e1`, `e2`, `e15`) generated by the YAML snapshot output to perform interactions like `click`, `fill`, or `hover`.
 * **No Visual Guessing:** Never try to guess click coordinates based on historical context; always refresh the snapshot state if the page transitions or reloads.
 
 ### 3. Error Handling & Fallbacks
+
 * If a target element ID disappears, do not attempt to blind-click. Immediately run a new `playwright-cli snapshot` to capture the updated DOM state.
 * If a structural breakdown occurs, analyze the bounding box dimensions (`[box=x,y,w,h]`) from the snapshot output to detect elements with zero height/width or clipping issues.
 
 ### 4. Strict Constraint
-* **NEVER** execute `playwright-cli screenshot`. 
-* **NEVER** request a visual image file for layout debugging. 
+
+* **NEVER** execute `playwright-cli screenshot`.
+* **NEVER** request a visual image file for layout debugging.
 * All visual verification must be reverse-engineered using text-based tree structures and geometric layout boxes.

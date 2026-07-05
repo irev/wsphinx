@@ -81,32 +81,32 @@
 	<div class="grow overflow-y-auto px-5 py-4">
 		{#if loading}
 			<div class="flex items-center justify-center py-10">
-				<div class="kt-spinner-ring size-6"></div>
+				<div class="wt-spinner-ring size-6"></div>
 			</div>
 		{:else}
 			<form class="flex flex-col gap-4" onsubmit={(e) => { e.preventDefault(); submit(); }}>
 				<div>
 					<label for="tfd_title" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Judul Tiket <span class="text-destructive">*</span></label>
-					<input id="tfd_title" bind:value={form.title} required placeholder="Judul tiket" class="kt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
+					<input id="tfd_title" bind:value={form.title} required placeholder="Judul tiket" class="wt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
 				</div>
 				<div>
 					<label for="tfd_summary" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Ringkasan Masalah <span class="text-destructive">*</span></label>
-					<textarea id="tfd_summary" bind:value={form.summary} required placeholder="Deskripsi masalah" class="kt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" rows={4}></textarea>
+					<textarea id="tfd_summary" bind:value={form.summary} required placeholder="Deskripsi masalah" class="wt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" rows={4}></textarea>
 				</div>
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="tfd_reporter" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Nama Pelapor <span class="text-destructive">*</span></label>
-						<input id="tfd_reporter" bind:value={form.reporterName} required placeholder="Nama" class="kt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
+						<input id="tfd_reporter" bind:value={form.reporterName} required placeholder="Nama" class="wt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
 					</div>
 					<div>
 						<label for="tfd_phone" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">No. Telepon</label>
-						<input id="tfd_phone" bind:value={form.reporterPhone} placeholder="08xxxx" class="kt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
+						<input id="tfd_phone" bind:value={form.reporterPhone} placeholder="08xxxx" class="wt-input w-full border border-input rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/50" />
 					</div>
 				</div>
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="tfd_category" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Kategori</label>
-						<select id="tfd_category" bind:value={form.categoryId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+						<select id="tfd_category" bind:value={form.categoryId} class="wt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
 							<option value="">Pilih kategori</option>
 							{#each categories as cat}
 								<option value={cat.id}>{cat.name}</option>
@@ -115,7 +115,7 @@
 					</div>
 					<div>
 						<label for="tfd_priority" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Prioritas</label>
-						<select id="tfd_priority" bind:value={form.priorityId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+						<select id="tfd_priority" bind:value={form.priorityId} class="wt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
 							<option value="">Pilih prioritas</option>
 							{#each priorities as pri}
 								<option value={pri.id}>{pri.name}</option>
@@ -126,7 +126,7 @@
 				<div class="grid grid-cols-2 gap-3">
 					<div>
 						<label for="tfd_pic" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">PIC</label>
-						<select id="tfd_pic" bind:value={form.picId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+						<select id="tfd_pic" bind:value={form.picId} class="wt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
 							<option value="">Pilih PIC</option>
 							{#each pics as pic}
 								<option value={pic.id}>{pic.name}</option>
@@ -135,7 +135,7 @@
 					</div>
 					<div>
 						<label for="tfd_source" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Sumber WhatsApp</label>
-						<select id="tfd_source" bind:value={form.sourceId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+						<select id="tfd_source" bind:value={form.sourceId} class="wt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
 							<option value="">Pilih sumber</option>
 							{#each sources as src}
 								<option value={src.id}>{src.name}</option>

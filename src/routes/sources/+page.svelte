@@ -28,6 +28,17 @@
 	let sending = $state(false);
 
 	let analyzeResult = $state<any | null>(null);
+
+	function getSenderName(msg: any): string {
+		if (msg.fromName) return msg.fromName;
+		const phone = (msg.fromPhone || '').replace(/[^0-9]/g, '');
+		if (!phone) return msg.fromPhone || 'Unknown';
+		const match = contacts.find((c: any) => {
+			const cp = (c.phone || c.chatId || '').replace(/[^0-9]/g, '');
+			return cp && (cp.includes(phone) || phone.includes(cp));
+		});
+		return match?.name || match?.pushname || maskPhone(msg.fromPhone);
+	}
 	let analyzing = $state(false);
 	let creating = $state(false);
 
@@ -166,6 +177,9 @@
 				const d = await conRes.json();
 				contacts = d.data || [];
 			}
+			if (!grpRes.ok || !conRes.ok) {
+				showToast('error', 'Worker WhatsApp tidak merespon — hanya menampilkan data dari database');
+			}
 		} catch (e) {
 			showToast('error', `Gagal load: ${(e as Error).message}`);
 		}
@@ -185,7 +199,11 @@
 			const srcRes = await fetch('/api/settings/sources?take=200');
 			if (srcRes.ok) sources = (await srcRes.json()).data || [];
 
-			showToast('success', 'Data WA berhasil disinkronisasi');
+			if (!grpRes.ok || !conRes.ok) {
+				showToast('error', 'Worker WhatsApp tidak merespon — data grup/kontak tidak dimuat');
+			} else {
+				showToast('success', 'Data WA berhasil disinkronisasi');
+			}
 		} catch (e) {
 			showToast('error', (e as Error).message);
 		}
@@ -255,7 +273,46 @@
 		const wa = [...groups, ...contacts].find((g: any) => g.chatId === item.chatId);
 		selectedChatInfo = wa || null;
 
+		if (!item.id && item.chatId) {
+			try {
+				const res = await fetch('/api/settings/sources', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({
+						name: item.name,
+						type: item.type,
+						phone: item.phone,
+						chatId: item.chatId,
+						active: true,
+					}),
+				});
+				if (res.ok) {
+					const d = await res.json();
+					item.id = d.data.id;
+					item.isActive = true;
+					item.source = d.data;
+					sources = [...sources, d.data];
+				}
+			} catch {}
+		}
+
 		await loadMessages(item);
+
+		if (messages.length === 0 && item.chatId && item.id) {
+			syncingMessages = true;
+			try {
+				const res = await fetch(`/api/whatsapp/chat/${encodeURIComponent(item.chatId)}?sourceId=${item.id}&limit=200`);
+				if (!res.ok) {
+					const errData = await res.json().catch(() => ({}));
+					showToast('error', errData.error || 'Gagal sync pesan dari WA');
+				} else {
+					await loadMessages(item);
+				}
+			} catch (e) {
+				showToast('error', `Gagal sync: ${(e as Error).message}`);
+			}
+			syncingMessages = false;
+		}
 
 		// auto-mark unread messages as read from this source
 		const unread = messages.filter((m) => !m.isRead);
@@ -485,10 +542,6 @@
 	});
 </script>
 
-<svelte:head>
-	<title>Kontak & Grup WhatsApp — Support App</title>
-</svelte:head>
-
 <Card title="Kontak & Grup WhatsApp" subtitle="Daftar kontak dan grup dari WhatsApp — pilih untuk melihat percakapan" bodyClass="p-0" class="sources-card">
 		{#snippet headerActions()}
 			<div class="flex items-center gap-2">
@@ -507,39 +560,39 @@
 			>
 				<!-- Tabs + Search -->
 				<div class="p-3 border-b border-border shrink-0">
-					<div class="kt-segmented mb-2.5">
+					<div class="wt-segmented mb-2.5">
 						<button onclick={() => { tab = 'all'; }}
-							class={'kt-segmented-item ' + (tab === 'all' ? 'active' : '')}
+							class={'wt-segmented-item ' + (tab === 'all' ? 'active' : '')}
 						>Semua</button>
 						<button onclick={() => { tab = 'group'; }}
-							class={'kt-segmented-item ' + (tab === 'group' ? 'active' : '')}
+							class={'wt-segmented-item ' + (tab === 'group' ? 'active' : '')}
 						>Grup</button>
 						<button onclick={() => { tab = 'contact'; }}
-							class={'kt-segmented-item ' + (tab === 'contact' ? 'active' : '')}
+							class={'wt-segmented-item ' + (tab === 'contact' ? 'active' : '')}
 						>Kontak</button>
 						<button onclick={() => { tab = 'archived'; }}
-							class={'kt-segmented-item ' + (tab === 'archived' ? 'active' : '')}
+							class={'wt-segmented-item ' + (tab === 'archived' ? 'active' : '')}
 						>Arsip</button>
 					</div>
 					<input type="search" placeholder="Cari nama atau nomor..." oninput={onSearch}
-						class="kt-filter-input w-full"
+						class="wt-filter-input w-full"
 					/>
 				</div>
 
 				<!-- List -->
 				<div class="overflow-y-auto flex-1 min-h-0">
 					{#if loading}
-						<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
+						<div class="flex items-center justify-center py-10"><div class="wt-spinner-ring size-6"></div></div>
 					{:else if filteredList.length === 0}
-						<div class="kt-empty">
-							<i class="ki-filled ki-two-phone kt-empty-icon text-4xl"></i>
-							<p class="kt-empty-text">Tidak ada kontak/grup</p>
-							<p class="kt-empty-sub">Pastikan worker WhatsApp sudah terhubung</p>
+						<div class="wt-empty">
+							<i class="ki-filled ki-two-phone wt-empty-icon text-4xl"></i>
+							<p class="wt-empty-text">Tidak ada kontak/grup</p>
+							<p class="wt-empty-sub">Pastikan worker WhatsApp sudah terhubung</p>
 						</div>
 					{:else}
 						{#each filteredList as item}
 						<button onclick={() => selectChat(item)}
-							class={'w-full text-left flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/30 transition-colors border-b border-border/50 last:border-b-0' + (selectedSource?.chatId === item.chatId ? ' bg-primary/5' : '') + (!item.isActive && item.source?.id ? ' opacity-50' : '')}
+							class={'w-full text-left flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/30 transition-colors border-b border-border/50 last:border-b-0' + (selectedSource?.chatId === item.chatId ? ' bg-primary/5' : '') + (!item.isActive && item.source?.id && selectedSource?.chatId !== item.chatId ? ' opacity-50' : '')}
 						>
 								<div class="relative shrink-0">
 									{#if item.photoPath}
@@ -565,7 +618,7 @@
 								<div class="flex items-center gap-1 shrink-0" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="none">
 									{#if item.source?.id}
 										<input type="checkbox" checked={item.isActive} onchange={(e) => toggleActive(item, e)}
-											class="kt-switch-sm" aria-label={item.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+											class="wt-switch-sm" aria-label={item.isActive ? 'Nonaktifkan' : 'Aktifkan'}
 										/>
 									{/if}
 								</div>
@@ -604,7 +657,7 @@
 						<div class="flex items-center gap-1">
 							{#if selectedSource.source?.id}
 								<input type="checkbox" checked={selectedSource.isActive} onchange={(e) => toggleActive(selectedSource, e)}
-									class="kt-switch-sm" aria-label={selectedSource.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+									class="wt-switch-sm" aria-label={selectedSource.isActive ? 'Nonaktifkan' : 'Aktifkan'}
 								/>
 							{/if}
 							<button onclick={syncMessages} disabled={syncingMessages} class="kt-btn kt-btn-icon kt-btn-sm kt-btn-ghost text-muted-foreground" title="Sync pesan dari WA">
@@ -616,28 +669,25 @@
 					<!-- Message filters -->
 					<div class="flex items-center gap-2 px-3 lg:px-4 py-2 border-b border-border/50 shrink-0">
 						<select bind:value={dateRange} onchange={onDateRangeChange}
-							class="kt-filter-select"
+							class="wt-filter-select"
 						>
 							<option value="today">Hari Ini</option>
 							<option value="7days">7 Hari</option>
 							<option value="30days">30 Hari</option>
 						</select>
 						<input type="search" placeholder="Cari pesan..." oninput={onChatSearch}
-							class="kt-filter-input flex-1 min-w-0"
+							class="wt-filter-input flex-1 min-w-0"
 						/>
 					</div>
 
 					<!-- Messages -->
 					<div class="overflow-y-auto px-3 lg:px-4 flex-1 min-h-0">
 						{#if messagesLoading}
-							<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-5"></div></div>
+							<div class="flex items-center justify-center py-10"><div class="wt-spinner-ring size-5"></div></div>
 						{:else if messages.length === 0}
-							<div class="kt-empty">
-								<i class="ki-filled ki-messages kt-empty-icon text-3xl"></i>
-								<p class="kt-empty-text">Belum ada pesan</p>
-								<button onclick={syncMessages} disabled={syncingMessages} class="mt-2 kt-btn kt-btn-dim kt-btn-xs">
-									{syncingMessages ? 'Sync...' : 'Sync dari WA'}
-								</button>
+							<div class="wt-empty">
+								<i class="ki-filled ki-messages wt-empty-icon text-3xl"></i>
+								<p class="wt-empty-text">Belum ada pesan</p>
 							</div>
 						{:else}
 							{#each groupByDate(messages) as [dateLabel, msgs]}
@@ -647,13 +697,13 @@
 								{#each msgs as msg}
 									<div class="flex items-start gap-2 py-1.5 border-b border-border/30 last:border-b-0 {isSelected(msg.id) ? 'bg-primary/5 -mx-3 lg:-mx-4 px-3 lg:px-4' : ''} {!msg.isRead ? 'font-medium' : ''}">
 										<input type="checkbox" checked={isSelected(msg.id)} onchange={() => toggleSelect(msg.id)}
-											class="kt-checkbox mt-1 shrink-0" aria-label="Pilih pesan"
+											class="wt-checkbox mt-1 shrink-0" aria-label="Pilih pesan"
 										/>
 										<div class="flex-1 min-w-0">
 											<div class="flex items-center gap-1.5">
-												<span class="text-xs font-semibold text-mono {!msg.isRead ? 'font-semibold' : 'font-normal'}">{msg.fromName || maskPhone(msg.fromPhone)}</span>
+												<span class="text-xs font-semibold text-mono {!msg.isRead ? 'font-semibold' : 'font-normal'}">{getSenderName(msg)}</span>
 												<span class="text-2xs text-muted-foreground">{formatTime(new Date(msg.timestamp))}</span>
-												<button onclick={(e) => toggleReadMsg(msg, e)} class="kt-btn kt-btn-icon kt-btn-xs ml-auto" aria-label={msg.isRead ? 'Tandai belum dibaca' : 'Tandai sudah dibaca'}>
+												<button onclick={(e) => toggleReadMsg(msg, e)} class="kt-btn-view kt-btn-icon kt-btn-xs ml-auto" aria-label={msg.isRead ? 'Tandai belum dibaca' : 'Tandai sudah dibaca'}>
 													<i class="ki-filled ki-{msg.isRead ? 'eye-slash' : 'eye'} text-xs text-muted-foreground"></i>
 												</button>
 											</div>
@@ -705,10 +755,10 @@
 
 				{:else}
 					<!-- Empty state -->
-					<div class="kt-empty py-20">
-						<i class="ki-filled ki-two-phone kt-empty-icon text-5xl"></i>
-						<p class="kt-empty-text">Pilih kontak atau grup dari daftar di samping</p>
-						<p class="kt-empty-sub">Untuk melihat percakapan dan mengirim balasan</p>
+					<div class="wt-empty py-20">
+						<i class="ki-filled ki-two-phone wt-empty-icon text-5xl"></i>
+						<p class="wt-empty-text">Pilih kontak atau grup dari daftar di samping</p>
+						<p class="wt-empty-sub">Untuk melihat percakapan dan mengirim balasan</p>
 					</div>
 				{/if}
 			</div>
@@ -717,7 +767,7 @@
 
 <!-- Analyze result modal -->
 {#if analyzeResult}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+	<div class="fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0,0,0,0.7)"
 		onclick={() => analyzeResult = null} role="button" tabindex="-1"
 		onkeydown={(e) => e.key === 'Escape' && (analyzeResult = null)}
 	>
@@ -772,6 +822,12 @@
 	.sources-left-panel {
 		width: 100%;
 		flex-shrink: 0;
+		height: 100%;
+	}
+	.sources-left-panel .overflow-y-auto,
+	.sources-right-panel .overflow-y-auto {
+		min-height: 0;
+		overflow-y: auto;
 	}
 	.sources-right-panel {
 		flex: 1;
@@ -793,12 +849,14 @@
 	:global(.sources-card) {
 		display: flex;
 		flex-direction: column;
-		min-height: calc(100vh - 280px);
+		max-height: calc(100vh - 200px);
+		height: 560px;
 	}
 	:global(.sources-card .kt-card-body) {
 		display: flex;
 		flex-direction: column;
 		min-height: 0;
 		flex: 1;
+		overflow: hidden;
 	}
 </style>

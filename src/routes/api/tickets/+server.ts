@@ -50,7 +50,7 @@ export const GET: RequestHandler = async ({ url }) => {
   return json({ data: tickets, total, limit, offset });
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {
@@ -58,7 +58,7 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   try {
-    const ticket = await createTicket(parsed.data);
+    const ticket = await createTicket(parsed.data, locals.user?.id);
     return json({ data: ticket }, { status: 201 });
   } catch (e) {
     return json({ error: (e as Error).message }, { status: 409 });

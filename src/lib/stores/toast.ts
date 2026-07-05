@@ -21,7 +21,7 @@ export function showToast(type: ToastType, message: string) {
   setTimeout(() => {
     toasts = toasts.filter(t => t.id !== id);
     notify();
-  }, 5000);
+  }, 8000);
 }
 
 export function removeToast(id: number) {

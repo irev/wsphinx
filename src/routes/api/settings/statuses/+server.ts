@@ -1,6 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
 import { z } from "zod";
+import { isAdmin } from "$lib/server/auth/guard.js";
 
 const createSchema = z.object({
   name: z.string().min(1).max(100),
@@ -27,7 +28,10 @@ export const GET: RequestHandler = async ({ url }) => {
   return json({ data, total, skip, take });
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const guard = isAdmin(event);
+  if (guard) return guard;
+  const { request } = event;
   const body = await request.json();
   const parsed = createSchema.safeParse(body);
   if (!parsed.success) {

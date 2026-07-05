@@ -1,9 +1,12 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types.js";
+import { isAdminOrPic } from "$lib/server/auth/guard.js";
+import { getWorkerUrl } from "$lib/server/whatsapp/worker-url.js";
 
-const WORKER_URL = process.env.WORKER_API_URL || "http://127.0.0.1:3457";
-
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const guard = isAdminOrPic(event);
+  if (guard) return guard;
+  const { request } = event;
   const { chatId, text } = await request.json();
 
   if (!chatId || !text) {
@@ -11,6 +14,7 @@ export const POST: RequestHandler = async ({ request }) => {
   }
 
   try {
+    const WORKER_URL = await getWorkerUrl();
     const res = await fetch(`${WORKER_URL}/api/send`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

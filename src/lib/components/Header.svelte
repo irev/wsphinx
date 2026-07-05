@@ -2,10 +2,15 @@
 	import { onMount } from 'svelte';
 	import { waStatus } from '$lib/stores/wa-status.svelte';
 	import { waProfile } from '$lib/stores/wa-profile.svelte';
+	import { auth, logout as authLogout } from '$lib/stores/auth.svelte';
+	import { goto } from '$app/navigation';
+	import ChangePasswordDialog from '$lib/components/ChangePasswordDialog.svelte';
 
 	let { currentPage = '' } = $props();
 
 	let unreadCount = $state(0);
+	let showProfileMenu = $state(false);
+	let showChangePassword = $state(false);
 
 	async function checkUnread() {
 		try {
@@ -45,6 +50,17 @@
 		};
 		return m[s] || 'Worker tidak berjalan';
 	}
+
+	function roleLabel(role: string): string {
+		if (role === 'admin') return 'Admin';
+		if (role === 'pic') return 'PIC';
+		return 'User';
+	}
+
+	async function handleLogout() {
+		await authLogout();
+		goto('/login', { replaceState: true });
+	}
 </script>
 
 <header
@@ -82,21 +98,48 @@
 						</span>
 					{/if}
 				</button>
-				<div class="flex items-center gap-2 ps-2 lg:ps-4 border-s border-border" title={statusTitle(waStatus.status)}>
-				{#if waProfile.photoPath}
-					<img src={waProfile.photoPath} alt={waProfile.pushname} class="size-[34px] rounded-full object-cover" />
-				{:else}
-					<div class="kt-avatar-image size-[34px] rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">{(waProfile.pushname || 'R')[0].toUpperCase()}</div>
-				{/if}
-				<div class="hidden lg:flex flex-col">
-					<span class="text-sm font-medium text-foreground leading-none flex items-center gap-1.5">
-						<span class="size-2 rounded-full {statusColor(waStatus.status)} {waStatus.status === 'connected' ? 'animate-ping' : ''}"></span>
-						{waProfile.pushname || (waProfile.loaded ? waProfile.phone : 'PIC Satu')}
-					</span>
-						<span class="text-2xs font-normal text-muted-foreground mt-0.5">{waProfile.phone ? waProfile.phone : 'Teknisi'}</span>
-					</div>
-				</div>
+
 			</div>
+
+			<!-- User Profile Dropdown -->
+			{#if auth.user}
+				<div class="relative" onfocusout={() => setTimeout(() => showProfileMenu = false, 200)}>
+					<button onclick={() => showProfileMenu = !showProfileMenu} class="flex items-center gap-2 ps-2 lg:ps-3 border-s border-border wt-header-profile-btn rounded-lg transition-colors cursor-pointer" aria-label="Menu profil">
+						<div class="kt-avatar-image size-[34px] rounded-full bg-primary/20 flex items-center justify-center text-primary text-xs font-semibold">{auth.user.name[0].toUpperCase()}</div>
+						<div class="hidden lg:flex items-center gap-1.5">
+							<span class="size-2 rounded-full {statusColor(waStatus.status)}" title={statusTitle(waStatus.status)}></span>
+							<div class="flex flex-col text-start">
+								<span class="text-sm font-medium text-foreground leading-none">{auth.user.name}</span>
+								<span class="text-2xs font-normal text-muted-foreground mt-0.5">{roleLabel(auth.user.role)}</span>
+							</div>
+						</div>
+						<i class="ki-filled ki-down text-xs text-muted-foreground hidden lg:block"></i>
+					</button>
+
+					{#if showProfileMenu}
+						<div class="absolute end-0 top-full mt-1.5 w-48 bg-card border border-border rounded-xl shadow-xl z-[9999] py-1 text-sm">
+							<div class="px-3 py-2 border-b border-border">
+								<p class="text-xs font-medium text-foreground">{auth.user.name}</p>
+								<p class="text-2xs text-muted-foreground mt-0.5">{auth.user.phone || ''} · {roleLabel(auth.user.role)}</p>
+							</div>
+							<button onclick={() => { showProfileMenu = false; showChangePassword = true; }} class="w-full flex items-center gap-2 px-3 py-2 text-foreground hover:bg-muted transition-colors">
+								<i class="ki-filled ki-lock text-sm"></i>
+								Ganti Password
+							</button>
+							<div class="px-3 py-2 border-t border-border flex items-center gap-2">
+								<span class="size-2 rounded-full {statusColor(waStatus.status)}"></span>
+								<span class="text-xs text-muted-foreground">WA: {waProfile.phone || '—'} · {statusTitle(waStatus.status)}</span>
+							</div>
+							<button onclick={handleLogout} class="w-full flex items-center gap-2 px-3 py-2 text-destructive hover:bg-destructive/5 transition-colors">
+								<i class="ki-filled ki-exit-right text-sm"></i>
+								Logout
+							</button>
+						</div>
+					{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 </header>
+
+<ChangePasswordDialog bind:open={showChangePassword} />

@@ -9,11 +9,15 @@
 	let loading = $state(true);
 	let showCreateForm = $state(false);
 	let showDetailId = $state<string | null>(null);
+	let searchQ = $state('');
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 	async function load() {
 		loading = true;
+		const params = new URLSearchParams({ limit: '200' });
+		if (searchQ) params.set('q', searchQ);
 		const [ticketRes, settingsRes] = await Promise.all([
-			fetch('/api/tickets?limit=200'),
+			fetch(`/api/tickets?${params}`),
 			fetch('/api/settings'),
 		]);
 		if (ticketRes.ok) tickets = (await ticketRes.json()).data || [];
@@ -26,6 +30,19 @@
 
 	$effect(() => { load(); });
 
+	function onSearch(e: Event) {
+		searchQ = (e.target as HTMLInputElement).value;
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(load, 300);
+	}
+
+	let prefillStatusId = $state<string | null>(null);
+
+	function openCreateWithStatus(statusId: string) {
+		prefillStatusId = statusId;
+		showCreateForm = true;
+	}
+
 	function prioBadge(p: string) {
 		const m: Record<string, string> = { Critical: 'destructive', High: 'warning', Medium: 'primary', Low: 'outline' };
 		return m[p] || 'outline';
@@ -35,8 +52,11 @@
 {#if loading}
 	<div class="flex items-center justify-center py-10"><div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>
 {:else}
-	<div class="flex justify-end mb-4">
-		<Button onclick={() => showCreateForm = true}>
+	<div class="flex items-center justify-between gap-3 mb-4 flex-wrap">
+		<input type="search" placeholder="Cari tiket..." oninput={onSearch}
+			class="wt-filter-input w-48 lg:w-56"
+		/>
+		<Button onclick={() => { prefillStatusId = null; showCreateForm = true; }}>
 			<i class="ki-filled ki-plus text-sm"></i>
 			Tiket Baru
 		</Button>
@@ -63,7 +83,7 @@
 							<div class="flex items-center gap-2 mt-2 text-2xs text-muted-foreground">
 								<span>{ticket.reporterName}</span>
 								{#if ticket.category}
-									<span class="kt-badge kt-badge-sm kt-badge-stroke">{ticket.category.name}</span>
+									<span class="kt-badge kt-badge-sm wt-badge-stroke">{ticket.category.name}</span>
 								{/if}
 								{#if ticket.pic}
 									<span class="kt-badge kt-badge-sm kt-badge-info">{ticket.pic.name}</span>
@@ -72,10 +92,14 @@
 						</div>
 					{/each}
 					{#if tickets.filter((t: any) => t.statusId === status.id).length === 0}
-						<div class="kt-empty py-6 border border-dashed border-border rounded-lg">
-							<p class="kt-empty-text text-xs">Kosong</p>
+						<div class="wt-empty py-6 border border-dashed border-border rounded-lg">
+							<p class="wt-empty-text text-xs">Kosong</p>
 						</div>
 					{/if}
+					<button onclick={() => openCreateWithStatus(status.id)} class="flex items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg hover:border-primary/40 transition-colors cursor-pointer">
+						<i class="ki-filled ki-plus text-xs"></i>
+						Add Card
+					</button>
 				</div>
 			</div>
 		{/each}
@@ -91,5 +115,6 @@
 
 <TicketFormDialog
 	show={showCreateForm}
-	onClose={() => showCreateForm = false}
+	onClose={() => { showCreateForm = false; prefillStatusId = null; }}
+	prefillStatusId={prefillStatusId}
 />

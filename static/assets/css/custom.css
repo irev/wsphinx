@@ -1,9 +1,10 @@
 /* ═══════════════════════════════════════════════════════════
    WhatsApp Tech Support — Custom Utility Classes
+   Prefix: wt- (WhatsApp Tech Support)
    ═══════════════════════════════════════════════════════════ */
 
 /* ── Toggle Switch (iOS-style) ── */
-.kt-switch {
+.wt-switch {
   appearance: none;
   width: 1.75rem;
   height: 1rem;
@@ -15,10 +16,10 @@
   flex-shrink: 0;
   vertical-align: middle;
 }
-.kt-switch:checked {
+.wt-switch:checked {
   background: var(--primary, #3b82f6);
 }
-.kt-switch::after {
+.wt-switch::after {
   content: '';
   position: absolute;
   top: 2px;
@@ -29,25 +30,25 @@
   border-radius: 50%;
   transition: transform 0.2s;
 }
-.kt-switch:checked::after {
+.wt-switch:checked::after {
   transform: translateX(0.75rem);
 }
-.kt-switch-sm {
+.wt-switch-sm {
   width: 1.5rem;
   height: 0.875rem;
 }
-.kt-switch-sm::after {
+.wt-switch-sm::after {
   width: 0.625rem;
   height: 0.625rem;
   top: 2px;
   left: 2px;
 }
-.kt-switch-sm:checked::after {
+.wt-switch-sm:checked::after {
   transform: translateX(0.625rem);
 }
 
 /* ── Checkbox ── */
-.kt-checkbox {
+.wt-checkbox {
   appearance: none;
   width: 1rem;
   height: 1rem;
@@ -60,11 +61,11 @@
   flex-shrink: 0;
   background: transparent;
 }
-.kt-checkbox:checked {
+.wt-checkbox:checked {
   background: var(--primary, #3b82f6);
   border-color: var(--primary, #3b82f6);
 }
-.kt-checkbox:checked::after {
+.wt-checkbox:checked::after {
   content: '';
   position: absolute;
   left: 4px;
@@ -77,7 +78,7 @@
 }
 
 /* ── Overlay / Modal ── */
-.kt-overlay {
+.wt-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
@@ -87,22 +88,22 @@
   background: rgba(0, 0, 0, 0.5);
   padding: 1rem;
 }
-.dark .kt-overlay {
+.dark .wt-overlay {
   background: rgba(0, 0, 0, 0.7);
 }
 
-.kt-modal-card {
+.wt-modal-card {
   width: 100%;
   border-radius: 0.75rem;
   background: var(--popover, #fff);
   color: var(--popover-foreground);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3), 0 4px 16px rgba(0, 0, 0, 0.12);
 }
-.dark .kt-modal-card {
+.dark .wt-modal-card {
   background: var(--popover, #09090b);
 }
 
-.kt-modal-header {
+.wt-modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -111,11 +112,11 @@
   border-bottom: 1px solid var(--border, #e4e4e7);
 }
 
-.kt-modal-body {
+.wt-modal-body {
   padding: 1.25rem;
 }
 
-.kt-modal-footer {
+.wt-modal-footer {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -125,7 +126,7 @@
 }
 
 /* ── Filter Controls ── */
-.kt-filter-select {
+.wt-filter-select {
   padding: 0.25rem 0.5rem;
   height: 32px;
   border: 1px solid var(--border);
@@ -137,11 +138,11 @@
   cursor: pointer;
   transition: box-shadow 0.15s;
 }
-.kt-filter-select:focus {
+.wt-filter-select:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #3b82f6) 40%, transparent);
 }
 
-.kt-filter-input {
+.wt-filter-input {
   padding: 0.25rem 0.5rem;
   height: 32px;
   border: 1px solid var(--border);
@@ -152,15 +153,15 @@
   outline: none;
   transition: box-shadow 0.15s;
 }
-.kt-filter-input:focus {
+.wt-filter-input:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #3b82f6) 40%, transparent);
 }
-.kt-filter-input::placeholder {
+.wt-filter-input::placeholder {
   color: var(--muted-foreground);
 }
 
 /* ── Empty State ── */
-.kt-empty {
+.wt-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -168,51 +169,51 @@
   padding: 2.5rem 1rem;
   text-align: center;
 }
-.kt-empty-icon {
+.wt-empty-icon {
   font-size: 2.25rem;
   color: var(--muted-foreground);
   opacity: 0.3;
   margin-bottom: 0.75rem;
 }
-.kt-empty-text {
+.wt-empty-text {
   font-size: 0.875rem;
   font-weight: 500;
   color: var(--muted-foreground);
 }
-.kt-empty-sub {
+.wt-empty-sub {
   font-size: 0.6875rem;
   color: var(--muted-foreground);
   margin-top: 0.25rem;
 }
 
 /* ── Loading Spinner ── */
-.kt-spinner {
+.wt-spinner {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 2.5rem;
 }
-.kt-spinner-ring {
+.wt-spinner-ring {
   width: 1.5rem;
   height: 1.5rem;
   border: 2px solid var(--primary);
   border-top-color: transparent;
   border-radius: 50%;
-  animation: kt-spin 0.8s linear infinite;
+  animation: wt-spin 0.8s linear infinite;
 }
-@keyframes kt-spin {
+@keyframes wt-spin {
   to { transform: rotate(360deg); }
 }
 
 /* ── Segmented Button Group ── */
-.kt-segmented {
+.wt-segmented {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   padding: 2px;
 }
-.kt-segmented-item {
+.wt-segmented-item {
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -224,23 +225,23 @@
   color: var(--muted-foreground);
   white-space: nowrap;
 }
-.kt-segmented-item:hover {
+.wt-segmented-item:hover {
   color: var(--foreground);
 }
-.kt-segmented-item.active {
+.wt-segmented-item.active {
   background: var(--primary);
   color: var(--primary-foreground, #fff);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
 }
 
 /* ── Dark mode badge fix ── */
-.dark .kt-badge-stroke {
+.dark .wt-badge-stroke {
   background: transparent;
   border-color: var(--border);
 }
 
 /* ── Base Input ── */
-.kt-input {
+.wt-input {
   width: 100%;
   padding: 0.375rem 0.625rem;
   border: 1px solid var(--border);
@@ -251,20 +252,20 @@
   color: var(--foreground);
   transition: box-shadow 0.15s, border-color 0.15s;
 }
-.kt-input:focus {
+.wt-input:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #3b82f6) 40%, transparent);
   border-color: var(--primary);
 }
-.kt-input::placeholder {
+.wt-input::placeholder {
   color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
-textarea.kt-input {
+textarea.wt-input {
   resize: vertical;
   min-height: 2.5rem;
 }
 
 /* ── Select (native) ── */
-.kt-select {
+.wt-select {
   width: 100%;
   padding: 0.375rem 0.625rem;
   border: 1px solid var(--border);
@@ -276,9 +277,41 @@ textarea.kt-input {
   cursor: pointer;
   transition: box-shadow 0.15s, border-color 0.15s;
 }
-.kt-select:focus {
+.wt-select:focus {
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary, #3b82f6) 40%, transparent);
   border-color: var(--primary);
+}
+
+/* ── Header profile button (solid background) ── */
+.wt-header-profile-btn {
+  background-color: color-mix(in srgb, var(--muted) 20%, transparent);
+}
+.wt-header-profile-btn:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+/* ── Toast notification (solid background) ── */
+.wt-toast {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+.wt-toast-success {
+  border-color: color-mix(in srgb, var(--color-green-500) 40%, transparent);
+}
+.wt-toast-success i {
+  color: var(--color-green-500);
+}
+.wt-toast-error {
+  border-color: color-mix(in srgb, var(--destructive) 40%, transparent);
+}
+.wt-toast-error i {
+  color: var(--destructive);
+}
+.wt-toast-info {
+  border-color: color-mix(in srgb, var(--color-violet-500) 40%, transparent);
+}
+.wt-toast-info i {
+  color: var(--color-violet-500);
 }
 
 /* ── Missing Tailwind classes (not in precompiled styles.css) ── */
@@ -305,8 +338,18 @@ textarea.kt-input {
 .duration-200 { --tw-duration: 200ms; transition-duration: 200ms; }
 .bg-popover { background-color: var(--popover); }
 
+/* ── Missing utility classes (not in precompiled Tailwind) ── */
+.bg-card { background-color: var(--card); }
+.bg-background { background-color: var(--background); }
+.text-card-foreground { color: var(--card-foreground); }
+.text-muted-foreground { color: var(--muted-foreground); }
+.text-foreground { color: var(--foreground); }
+.border-border { border-color: var(--border); }
+.shadow-xl { box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+.rounded-xl { border-radius: 0.75rem; }
+
 @media (max-width: 767px) {
-  .kt-hide-mobile { display: none !important; }
+  .wt-hide-mobile { display: none !important; }
 }
 
 /* ── Responsive widths (not in precompiled styles.css) ── */
@@ -325,6 +368,13 @@ textarea.kt-input {
 .bg-info\/10 { background-color: color-mix(in srgb, var(--color-violet-500) 10%, transparent); }
 .bg-muted-foreground { background-color: var(--muted-foreground); }
 
+/* ── Missing layout utilities (not in precompiled styles.css) ── */
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.min-h-screen { min-height: 100vh; }
+.max-w-sm { max-width: 24rem; }
+.space-y-1 > :not(:first-child) { margin-top: calc(var(--spacing) * 1); }
+.space-y-3 > :not(:first-child) { margin-top: calc(var(--spacing) * 3); }
+
 /* ── Sizing utilities (not in precompiled styles.css) ── */
 .size-56 { width: 14rem; height: 14rem; }
 
@@ -335,3 +385,23 @@ textarea.kt-input {
 @keyframes ping {
   75%, 100% { transform: scale(2); opacity: 0; }
 }
+
+/* ── Login page animations ── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.5s ease-out; }
+
+/* ── Hover variants (not in precompiled styles.css) ── */
+.hover\:bg-muted\/30:hover { background-color: color-mix(in srgb, var(--muted) 30%, transparent); }
+
+/* ── Disabled state utilities ── */
+.disabled\:opacity-30:disabled { opacity: 30%; }
+.disabled\:pointer-events-none:disabled { pointer-events: none; }
+
+/* ── Priority border colors for classification card ── */
+.border-prio-critical { border-color: var(--destructive, var(--color-red-500)); }
+.border-prio-high { border-color: var(--color-amber-500, #f59e0b); }
+.border-prio-medium { border-color: var(--primary, #3b82f6); }
+.border-prio-low { border-color: var(--muted-foreground, #a1a1aa); }

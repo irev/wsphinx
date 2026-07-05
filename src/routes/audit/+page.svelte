@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Badge from '$lib/components/Badge.svelte';
+	import { showToast } from '$lib/stores/toast';
 
 	const TAKE = 50;
 
@@ -47,6 +48,30 @@
 		searchTimer = setTimeout(load, 300);
 	}
 
+	let purging = $state(false);
+	let expandedRows = $state<Set<string>>(new Set());
+
+	function toggleExpand(id: string) {
+		const next = new Set(expandedRows);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		expandedRows = next;
+	}
+
+	async function purgeOld() {
+		if (!confirm('Hapus semua log >90 hari?')) return;
+		purging = true;
+		try {
+			const res = await fetch('/api/audit', { method: 'DELETE' });
+			if (res.ok) {
+				const d = await res.json();
+				showToast('success', `${d.deleted} log dihapus`);
+				load();
+			}
+		} catch {}
+		purging = false;
+	}
+
 	function prevPage() {
 		if (ls.skip > 0) { ls.skip = Math.max(0, ls.skip - ls.take); load(); }
 	}
@@ -72,6 +97,8 @@
 		try {
 			const obj = JSON.parse(raw);
 			if (obj.ticketNumber && obj.title) return `${obj.ticketNumber} — ${obj.title}`;
+			if (obj.fromStatusName && obj.toStatusName) return `${obj.fromStatusName} → ${obj.toStatusName}`;
+			if (obj.fromStatus && obj.toStatus && obj.fromStatus.length > 10) return `${statusLabel(obj.fromStatus)} → ${statusLabel(obj.toStatus)}`;
 			if (obj.status?.from && obj.status?.to) return `${statusLabel(obj.status.from)} → ${statusLabel(obj.status.to)}`;
 			if (obj.body && obj.summary) return `${obj.summary} (${Math.round((obj.confidence ?? 0) * 100)}%)`;
 			if (obj.body) return obj.body.slice(0, 80);
@@ -91,12 +118,17 @@
 		}
 	}
 
+	function tryParseDetail(raw: string): Record<string, unknown> | null {
+		try { return JSON.parse(raw); } catch { return null; }
+	}
+
 	function statusLabel(id: string): string {
 		const map: Record<string, string> = {
 			'open': 'Open', 'in_progress': 'In Progress', 'resolved': 'Resolved',
 			'closed': 'Closed', 'waiting': 'Waiting', 'reopened': 'Reopened',
 		};
-		return map[id.toLowerCase()] || id;
+		if (map[id.toLowerCase()]) return map[id.toLowerCase()];
+		return id.length > 10 ? `#${id.substring(0, 7)}` : id;
 	}
 </script>
 
@@ -109,7 +141,7 @@
 		<div class="flex items-center gap-3 flex-wrap">
 			<select
 				onchange={onFilter} bind:value={ls.entity}
-				class="kt-filter-select"
+				class="wt-filter-select"
 			>
 				<option value="">Semua Entity</option>
 				<option value="ticket">Ticket</option>
@@ -119,7 +151,7 @@
 			</select>
 			<select
 				onchange={onFilter} bind:value={ls.action}
-				class="kt-filter-select"
+				class="wt-filter-select"
 			>
 				<option value="">Semua Action</option>
 				<option value="ticket.create">ticket.create</option>
@@ -130,26 +162,29 @@
 			</select>
 			<input
 				type="search" placeholder="Cari..." oninput={onSearch}
-				class="kt-filter-input w-32 lg:w-40"
+				class="wt-filter-input w-32 sm:w-44 lg:w-56"
 			/>
 			<label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none shrink-0">
-				<input type="checkbox" bind:checked={autoRefresh} class="kt-checkbox" />
+				<input type="checkbox" bind:checked={autoRefresh} class="wt-checkbox" />
 				Auto
 			</label>
 			<button onclick={refresh} class="kt-btn kt-btn-outline kt-btn-sm" aria-label="Refresh">
 				<i class="ki-filled ki-arrows-circle"></i>
 			</button>
+			<button onclick={purgeOld} disabled={purging} class="kt-btn kt-btn-outline kt-btn-sm text-destructive" aria-label="Hapus log lama">
+				<i class="ki-filled ki-trash"></i>
+			</button>
 		</div>
 	</div>
 	{#if ls.loading}
 		<div class="kt-card-body">
-			<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
+			<div class="flex items-center justify-center py-10"><div class="wt-spinner-ring size-6"></div></div>
 		</div>
 	{:else if ls.data.length === 0}
 		<div class="kt-card-body">
-			<div class="kt-empty">
-				<i class="ki-filled ki-security-user kt-empty-icon text-3xl"></i>
-				<p class="kt-empty-text">Belum ada log</p>
+			<div class="wt-empty">
+				<i class="ki-filled ki-security-user wt-empty-icon text-3xl"></i>
+				<p class="wt-empty-text">Belum ada log</p>
 			</div>
 		</div>
 	{:else}
@@ -160,20 +195,74 @@
 						<tr>
 							<th class="w-[140px]"><span class="kt-table-col"><span class="kt-table-col-label">Waktu</span></span></th>
 							<th class="w-[100px]"><span class="kt-table-col"><span class="kt-table-col-label">User</span></span></th>
-							<th class="w-[110px]"><span class="kt-table-col"><span class="kt-table-col-label">Action</span></span></th>
+							<th class="w-[110px] hidden md:table-cell"><span class="kt-table-col"><span class="kt-table-col-label">Action</span></span></th>
 							<th class="w-[120px]"><span class="kt-table-col"><span class="kt-table-col-label">Entity</span></span></th>
 							<th><span class="kt-table-col"><span class="kt-table-col-label">Detail</span></span></th>
 						</tr>
 					</thead>
 					<tbody>
 						{#each ls.data as log}
-							<tr class="hover:bg-muted/30 transition-colors">
-								<td class="text-sm text-foreground whitespace-nowrap">{new Date(log.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</td>
+							<tr class="hover:bg-muted/30 transition-colors cursor-pointer" onclick={() => toggleExpand(log.id)}>
+								<td class="text-sm text-foreground whitespace-nowrap">
+									<div class="flex items-center gap-1.5">
+										<i class="ki-filled ki-{expandedRows.has(log.id) ? 'down' : 'black-right'} text-xs text-muted-foreground/50 transition-transform"></i>
+										{new Date(log.createdAt).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}
+									</div>
+								</td>
 								<td class="text-sm text-foreground">{log.user?.name || '-'}</td>
-								<td><Badge variant={actionBadge(log.action)} size="sm">{log.action}</Badge></td>
-								<td class="text-sm text-foreground">{log.entity} <span class="text-xs text-muted-foreground">#{log.entityId?.substring(0, 7) || ''}</span></td>
+								<td class="hidden md:table-cell"><Badge variant={actionBadge(log.action)} size="sm">{log.action}</Badge></td>
+								<td class="text-sm text-foreground">{log.entity}
+									{#if log.entity === 'ticket' && log.detail}
+										{@const det = tryParseDetail(log.detail)}
+										{#if det?.ticketNumber}
+											<span class="font-mono text-xs text-muted-foreground">{det.ticketNumber}</span>
+										{:else}
+											<span class="text-xs text-muted-foreground">#{log.entityId?.substring(0, 7) || ''}</span>
+										{/if}
+									{:else}
+										<span class="text-xs text-muted-foreground">#{log.entityId?.substring(0, 7) || ''}</span>
+									{/if}
+								</td>
 								<td class="text-sm text-muted-foreground max-w-xs truncate" title={log.detail || '-'}>{detailLabel(log.detail)}</td>
 							</tr>
+							{#if expandedRows.has(log.id) && log.detail}
+								{@const det = tryParseDetail(log.detail)}
+								<tr class="bg-muted/20">
+									<td colspan="5" class="p-0">
+										<div class="px-5 py-3 text-xs space-y-1.5 border-b border-border">
+											{#if det?.fromStatusName && det?.toStatusName}
+												<div class="flex items-center gap-2">
+													<span class="text-muted-foreground">Status:</span>
+													<span class="kt-badge kt-badge-sm wt-badge-stroke">{det.fromStatusName}</span>
+													<i class="ki-filled ki-black-right text-2xs text-muted-foreground"></i>
+													<span class="kt-badge kt-badge-sm wt-badge-stroke">{det.toStatusName}</span>
+												</div>
+											{/if}
+											{#if det?.ticketNumber && det?.title}
+												<div><span class="text-muted-foreground">Entity:</span> <span class="font-medium text-foreground">{det.ticketNumber}</span> — <span class="text-secondary-foreground">{det.title}</span></div>
+											{/if}
+											{#if det?.note}
+												<div><span class="text-muted-foreground">Catatan:</span> <span class="text-secondary-foreground">{det.note}</span></div>
+											{/if}
+											{#if det?.reason}
+												<div><span class="text-muted-foreground">Alasan:</span> <span class="text-secondary-foreground">{det.reason}</span></div>
+											{/if}
+											{#if log.ipAddress}
+												<div><span class="text-muted-foreground">IP:</span> <span class="font-mono text-foreground">{log.ipAddress}</span></div>
+											{/if}
+											{#if log.userAgent}
+												<div><span class="text-muted-foreground">User Agent:</span> <span class="text-muted-foreground/70">{log.userAgent}</span></div>
+											{/if}
+											{#if det?.summary}
+												<div><span class="text-muted-foreground">Ringkasan:</span> <span class="text-secondary-foreground">{det.summary}</span></div>
+											{/if}
+											{#if det?.confidence != null}
+												<div><span class="text-muted-foreground">Confidence:</span> <span class="font-medium text-foreground">{(+det.confidence * 100).toFixed(0)}%</span></div>
+											{/if}
+										</div>
+									</td>
+								</tr>
+							{/if}
 						{/each}
 					</tbody>
 				</table>

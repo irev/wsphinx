@@ -1,7 +1,10 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
+import { isAdmin } from "$lib/server/auth/guard.js";
 
-export const GET: RequestHandler = async () => {
+export const GET: RequestHandler = async (event) => {
+  const guard = isAdmin(event);
+  if (guard) return guard;
   const db = getDb();
   const [categories, priorities, statuses, users, sources] = await Promise.all([
     db.supportCategory.findMany({ orderBy: { sortOrder: "asc" } }),

@@ -3,15 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 const require = createRequire(import.meta.url);
 
-// Stealth plugin — override puppeteer require cache before whatsapp-web.js loads it
-const puppeteerExtra = require("puppeteer-extra");
-const StealthPlugin = require("puppeteer-extra-plugin-stealth");
-puppeteerExtra.use(StealthPlugin());
-const puppeteerPath = require.resolve("puppeteer");
-if (require.cache?.[puppeteerPath]) {
-  require.cache[puppeteerPath].exports = puppeteerExtra;
-}
-
 const { Client, LocalAuth } = require("whatsapp-web.js");
 type Message = import("whatsapp-web.js").Message;
 import type {
@@ -24,6 +15,8 @@ import type {
 } from "./adapter.js";
 import { findChromeExecutable } from "./chrome-helper.js";
 import { getDb } from "../db/index.js";
+
+const SESSION_BASE_DIR = path.resolve(process.env.WA_SESSION_PATH || ".session-data");
 
 export class WebJSAdapter implements WhatsAppReader {
   readonly name = "whatsapp-web.js";
@@ -44,24 +37,10 @@ export class WebJSAdapter implements WhatsAppReader {
   private messageQueue: WhatsAppMessage[] = [];
   private processing = false;
 
-  private static USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
-  ];
+  private static STABLE_USER_AGENT =
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36";
 
-  private static VIEWPORTS = [
-    { width: 1280, height: 720 },
-    { width: 1366, height: 768 },
-    { width: 1440, height: 900 },
-    { width: 1920, height: 1080 },
-  ];
-
-  private static pickRandom<T>(arr: T[]): T {
-    return arr[Math.floor(Math.random() * arr.length)];
-  }
+  private static STABLE_VIEWPORT = { width: 1366, height: 768 };
 
   constructor(sourceId: string, chromePath?: string) {
     this.sourceId = sourceId;
@@ -71,15 +50,19 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   private createClient() {
-    const ua = WebJSAdapter.pickRandom(WebJSAdapter.USER_AGENTS);
-    const vp = WebJSAdapter.pickRandom(WebJSAdapter.VIEWPORTS);
+    const ua = WebJSAdapter.STABLE_USER_AGENT;
+    const vp = WebJSAdapter.STABLE_VIEWPORT;
     const puppeteerOpts: Record<string, unknown> = {
-      headless: "new",
+      headless: true,
       protocolTimeout: 180_000,
       args: [
         "--no-sandbox",
         "--disable-setuid-sandbox",
         "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-accelerated-2d-canvas",
+        "--no-first-run",
+        "--no-zygote",
         "--disable-blink-features=AutomationControlled",
         `--user-agent=${ua}`,
         `--window-size=${vp.width},${vp.height}`,
@@ -91,7 +74,7 @@ export class WebJSAdapter implements WhatsAppReader {
     return new Client({
       authStrategy: new LocalAuth({
         clientId: this.sourceId,
-        dataPath: "./.session-data",
+        dataPath: SESSION_BASE_DIR,
       }),
       puppeteer: puppeteerOpts,
     });
@@ -416,7 +399,26 @@ export class WebJSAdapter implements WhatsAppReader {
     if (this.connecting || this.disconnecting) return;
     this.connecting = true;
     try {
-      await this.client.initialize();
+      const MAX_RETRIES = 3;
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          await this.client.initialize();
+          return;
+        } catch (e) {
+          lastError = e as Error;
+          if (e instanceof Error && attempt < MAX_RETRIES && /detached|destroyed|Protocol error/i.test(e.message)) {
+            console.log(`[WA] Navigate attempt ${attempt} failed (CDP error), retrying in ${2 * attempt}s...`);
+            await new Promise(r => setTimeout(r, 2000 * attempt));
+            try { await this.client.destroy(); } catch {}
+            this.client = this.createClient();
+            this.setupListeners();
+            continue;
+          }
+          throw e;
+        }
+      }
+      throw lastError;
     } finally {
       this.connecting = false;
     }
@@ -577,11 +579,20 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   getSessionInfo() {
-    const sessionDir = path.join(".session-data", `session-${this.sourceId}`);
+    const sessionDir = path.join(SESSION_BASE_DIR, `session-${this.sourceId}`);
     try {
       if (fs.existsSync(sessionDir)) {
         const stat = fs.statSync(sessionDir);
-        return { exists: true, createdAt: stat.birthtime.toISOString(), size: stat.size };
+        let totalSize = 0;
+        const walkDir = (dir: string) => {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) walkDir(full);
+            else if (entry.isFile()) totalSize += fs.statSync(full).size;
+          }
+        };
+        walkDir(sessionDir);
+        return { exists: true, createdAt: stat.birthtime.toISOString(), size: totalSize };
       }
       return { exists: false, createdAt: null, size: null };
     } catch {
@@ -590,7 +601,7 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   async clearSession() {
-    const sessionDir = path.join(".session-data", `session-${this.sourceId}`);
+    const sessionDir = path.join(SESSION_BASE_DIR, `session-${this.sourceId}`);
     try {
       if (fs.existsSync(sessionDir)) {
         if (this.status === "connected" || this.status === "scanning_qr") {

@@ -1,12 +1,12 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types.js";
-
-const WORKER_URL = process.env.WORKER_API_URL || "http://127.0.0.1:3457";
+import { getWorkerUrl } from "$lib/server/whatsapp/worker-url.js";
 
 export const GET: RequestHandler = async () => {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3000);
+    const WORKER_URL = await getWorkerUrl();
     const res = await fetch(`${WORKER_URL}/api/status`, { signal: controller.signal });
     clearTimeout(timeout);
     if (!res.ok) {

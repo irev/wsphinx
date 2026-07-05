@@ -1,6 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types.js";
 import { getDb } from "$lib/server/db/index.js";
+import { isAdmin } from "$lib/server/auth/guard.js";
 
 export const GET: RequestHandler = async ({ url }) => {
   const db = getDb();
@@ -15,7 +16,10 @@ export const GET: RequestHandler = async ({ url }) => {
   return json(map);
 };
 
-export const PUT: RequestHandler = async ({ request }) => {
+export const PUT: RequestHandler = async (event) => {
+  const guard = isAdmin(event);
+  if (guard) return guard;
+  const { request } = event;
   const db = getDb();
   const body = await request.json();
   if (!body.key) return json({ error: "Missing key" }, { status: 400 });

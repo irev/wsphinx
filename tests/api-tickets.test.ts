@@ -27,7 +27,7 @@ describe("Ticket Builder (integration)", () => {
         sourceId,
         fromPhone: "6281111111111",
         fromName: "Test User",
-        body: "Aplikasi error pas login",
+        body: "TKT-TEST-Aplikasi error pas login",
         timestamp: new Date(),
         rawData: "{}",
       },
@@ -38,7 +38,7 @@ describe("Ticket Builder (integration)", () => {
   afterAll(async () => {
     const db = getDb();
     await db.supportTicketMessage.deleteMany({ where: { messageId } });
-    await db.whatsAppMessage.deleteMany({ where: { id: messageId } });
+    await db.whatsAppMessage.deleteMany({ where: { body: "TKT-TEST-Aplikasi error pas login" } });
   });
 
   it("creates a ticket with linked message", async () => {

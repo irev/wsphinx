@@ -6,6 +6,14 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 
 ## Unreleased
 
+### Fixed
+
+- **Worker Manager crash loop**: Cek port (9494) sebelum spawn — kill occupying process otomatis. Deteksi crash loop (≥3 crash dalam 30s) → nonaktifkan auto-restart, stop infinite loop
+- **Health endpoint error path**: Tambah `uptime`, `status`, `reconnectAttempts`, `maxReconnectAttempts` di semua error response supaya validasi frontend tidak gagal ("Health response tidak sesuai format")
+- **WA status & profile store**: Skip polling API sebelum auth sukses (auth.loading atau !auth.user) — stop 401 sia-sia sebelum login
+- **Worker session size**: Hitung recursive file sizes dalam session directory, bukan directory entry size (4096 bytes)
+- **Header & Navbar status dot**: Tambah dot indikator WA status di header (sebelum nama user) dan di navbar (label "WA: Terhubung/Offline") — sinkron dengan `waStatus` store, bukan hardcoded `bg-muted-foreground`
+
 ### Added
 
 - **Port detection**: Script `scripts/check-ports.ts` mengecek konflik port sebelum app jalan — terintegrasi ke `npm run dev`, `npm run worker`, dan `npm run preview`.
@@ -13,6 +21,14 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 - **`.env.example`**: Tambah `VITE_PORT` (9393) dan `VITE_PREVIEW_PORT` (9595).
 
 ### Changed
+
+- **Responsive design standarisasi** — semua halaman kini mendukung mobile & desktop secara konsisten:
+  - **Settings**: Search input `w-28 lg:w-36` → `w-28 sm:w-44 lg:w-56`; Sources search `w-36 lg:w-48` → `w-36 sm:w-52 lg:w-64`
+  - **Settings — WA Connection**: 12 section vertikal dipecah jadi 2 kolom grid di desktop (`lg:grid-cols-2`) — kiri: status/QR/profile/actions, kanan: worker/stats/logs
+  - **Settings — Business Hours**: Time input `w-28` → `w-24 sm:w-28`, gap `gap-2` → `gap-1 sm:gap-2` agar tidak overflow di layar < 360px
+  - **Audit**: Kolom Action disembunyikan di mobile (`hidden md:table-cell`)
+  - **Audit**: Search input `w-32 lg:w-40` → `w-32 sm:w-44 lg:w-56`
+  - **Sources**: Fixed `height: 560px` → `max-height: calc(100vh - 200px)` agar proporsional ke viewport
 
 - **Port aplikasi dipindah ke range 9000+** untuk hindari bentrok dengan aplikasi lain:
   - Dev server: `5173` → **`9393`**

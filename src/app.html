@@ -4,30 +4,13 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
 		<meta name="text-scale" content="scale" />
-		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 		<link href="assets/vendor/keenicons/styles.bundle.css" rel="stylesheet" />
 		<link href="assets/css/styles.css" rel="stylesheet" />
 		<link href="assets/css/custom.css" rel="stylesheet" />
 		%sveltekit.head%
 	</head>
 	<body class="antialiased flex h-full text-base text-foreground bg-background [--header-height:78px]">
-		<script>
-			const defaultThemeMode = 'light';
-			let themeMode;
-			if (document.documentElement) {
-				if (localStorage.getItem('kt-theme')) {
-					themeMode = localStorage.getItem('kt-theme');
-				} else if (document.documentElement.hasAttribute('data-kt-theme-mode')) {
-					themeMode = document.documentElement.getAttribute('data-kt-theme-mode');
-				} else {
-					themeMode = defaultThemeMode;
-				}
-				if (themeMode === 'system') {
-					themeMode = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-				}
-				document.documentElement.classList.add(themeMode);
-			}
-		</script>
+		<script src="assets/js/theme-init.js" async></script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

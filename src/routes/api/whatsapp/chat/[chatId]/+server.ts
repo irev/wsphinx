@@ -1,8 +1,7 @@
 import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types.js";
 import { getDb } from "$lib/server/db/index.js";
-
-const WORKER_URL = process.env.WORKER_API_URL || "http://127.0.0.1:3457";
+import { getWorkerUrl } from "$lib/server/whatsapp/worker-url.js";
 
 export const GET: RequestHandler = async ({ params, url }) => {
   const chatId = decodeURIComponent(params.chatId);
@@ -14,6 +13,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
   }
 
   try {
+    const WORKER_URL = await getWorkerUrl();
     const res = await fetch(`${WORKER_URL}/api/chat/${encodeURIComponent(chatId)}?limit=${limit}`);
     if (!res.ok) {
       return json({ error: "Worker unavailable" }, { status: 502 });

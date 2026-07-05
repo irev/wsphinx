@@ -16,7 +16,7 @@
 		class:kt-badge-destructive={variant === 'destructive'}
 		class:kt-badge-info={variant === 'info'}
 		class:kt-badge-outline={variant === 'outline'}
-		class:kt-badge-stroke={variant === 'stroke'}
+		class:wt-badge-stroke={variant === 'stroke'}
 	>
 		{@render children()}
 	</span>

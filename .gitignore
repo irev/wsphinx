@@ -28,6 +28,8 @@ vite.config.ts.timestamp-*
 # Database
 *.db
 *.db-journal
+test.db
+test.db-journal
 
 # Media storage
 /media
@@ -47,6 +49,12 @@ npm-debug.log*
 # Playwright CLI artifacts
 .playwright-cli/
 
+# Worker logs
+/worker/logs/
+
+# Temp QR images
+.qr-temp/
+
 # WhatsApp web.js cache
 .wwebjs_cache/
 
@@ -61,8 +69,21 @@ sources-page-final.png
 sources-page.png
 sources-width-fix.png
 
+# Temp files
+tmp_*
+
+# Analysis output
+*.yml
+*.yaml
+$null
+
 # Temp docs
 BUG.md
 FITUR.md
 /docs
 /evaluations
+
+# Temp screenshots / exports
+dashboard.yml
+login-audit.yml
+tickets.yml

@@ -1,0 +1,1 @@
+(function(){var t=localStorage.getItem('kt-theme-mode')||document.documentElement.getAttribute('data-kt-theme-mode')||'light';if(t==='system'){t=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'}document.documentElement.classList.add(t)})();

@@ -1,7 +1,11 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
+import { isAdmin } from "$lib/server/auth/guard.js";
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async (event) => {
+  const guard = isAdmin(event);
+  if (guard) return guard;
+  const { request } = event;
   const db = getDb();
   const body = await request.json();
 

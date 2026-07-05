@@ -12,7 +12,7 @@
 	let expandedClassify = $state<string | null>(null);
 	let classificationCache = $state<Record<string, any>>({});
 	let classifying = $state(false);
-	let creating = $state(false);
+	let creatingPerId = $state<Set<string>>(new Set());
 	let autoRefresh = $state(false);
 	let refreshTimer: ReturnType<typeof setInterval> | undefined = $state();
 	let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -113,7 +113,7 @@
 	async function createTicket(msg: any) {
 		const cls = classificationCache[msg.id];
 		if (!cls) return;
-		creating = true;
+		creatingPerId.add(msg.id);
 		const cat = (settings.categories || []).find((c: any) => c.name.toLowerCase() === (cls.category || '').toLowerCase());
 		const prio = (settings.priorities || []).find((p: any) => p.name.toLowerCase() === (cls.priority || '').toLowerCase());
 		try {
@@ -136,7 +136,7 @@
 			showToast('success', `Tiket ${ticket.ticketNumber} berhasil dibuat`);
 			expandedClassify = null;
 		} catch (e) { showToast('error', (e as Error).message); }
-		creating = false;
+		creatingPerId.delete(msg.id);
 		load();
 	}
 
@@ -189,7 +189,7 @@
 		return m[p] || 'outline';
 	}
 	function prioBorder(p: string | null) {
-		const m: Record<string, string> = { Critical: 'border-red-500', High: 'border-orange-400', Medium: 'border-blue-400', Low: 'border-gray-300' };
+		const m: Record<string, string> = { Critical: 'border-prio-critical', High: 'border-prio-high', Medium: 'border-prio-medium', Low: 'border-prio-low' };
 		return m[p || ''] || '';
 	}
 </script>
@@ -197,7 +197,7 @@
 {#snippet headerActions()}
 	<div class="flex items-center gap-2">
 		<label class="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none shrink-0">
-			<input type="checkbox" bind:checked={autoRefresh} class="kt-checkbox" />
+			<input type="checkbox" bind:checked={autoRefresh} class="wt-checkbox" />
 			Auto
 		</label>
 		<button onclick={refresh} class="kt-btn kt-btn-outline kt-btn-sm" aria-label="Refresh">
@@ -210,7 +210,7 @@
 	<!-- Filters bar -->
 	<div class="flex items-center gap-2 flex-wrap px-5 pt-3 pb-2 border-b border-border max-sm:flex-col max-sm:items-stretch">
 		<select bind:value={view.sourceId} onchange={onFilter}
-			class="kt-filter-select w-auto"
+			class="wt-filter-select w-auto"
 		>
 			<option value="">Semua Grup</option>
 			{#each settings.sources || [] as src}
@@ -218,7 +218,7 @@
 			{/each}
 		</select>
 		<select bind:value={view.messageType} onchange={onFilter}
-			class="kt-filter-select"
+			class="wt-filter-select"
 		>
 			<option value="">Semua Type</option>
 			<option value="new_issue">new_issue</option>
@@ -230,14 +230,14 @@
 			<option value="general_chat">general_chat</option>
 		</select>
 		<select bind:value={view.isProcessed} onchange={onFilter}
-			class="kt-filter-select"
+			class="wt-filter-select"
 		>
 			<option value="">Semua Status</option>
 			<option value="true">Telah diproses</option>
 			<option value="false">Belum diproses</option>
 		</select>
 		<select bind:value={view.datePreset} onchange={onFilter}
-			class="kt-filter-select"
+			class="wt-filter-select"
 		>
 			<option value="">Semua Waktu</option>
 			<option value="today">Hari Ini</option>
@@ -245,10 +245,10 @@
 			<option value="30days">30 Hari</option>
 		</select>
 		<input type="search" placeholder="Cari..." oninput={onSearch}
-			class="kt-filter-input w-28 lg:w-36"
+			class="wt-filter-input w-28 lg:w-36"
 		/>
 		<select onchange={onTakeChange} value={view.take}
-			class="kt-filter-select"
+			class="wt-filter-select"
 		>
 			{#each TAKE_OPTIONS as opt}
 				<option value={opt}>{opt} per halaman</option>
@@ -258,19 +258,19 @@
 
 	<!-- Table -->
 	{#if view.loading}
-		<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
+		<div class="flex items-center justify-center py-10"><div class="wt-spinner-ring size-6"></div></div>
 	{:else if view.data.length === 0}
-		<div class="kt-empty">
-			<i class="ki-filled ki-messages kt-empty-icon text-4xl"></i>
-			<p class="kt-empty-text">Belum ada pesan</p>
-			<p class="kt-empty-sub">Import pesan atau jalankan WhatsApp worker</p>
+		<div class="wt-empty">
+			<i class="ki-filled ki-messages wt-empty-icon text-4xl"></i>
+			<p class="wt-empty-text">Belum ada pesan</p>
+			<p class="wt-empty-sub">Import pesan atau jalankan WhatsApp worker</p>
 		</div>
 	{:else}
 		<div class="kt-scrollable-x-auto">
 			<table class="kt-table kt-table-border w-full">
 				<thead>
 					<tr>
-						<th class="w-10"><input type="checkbox" onchange={toggleSelectAll} checked={selected.size === view.data.length && view.data.length > 0} class="kt-checkbox" aria-label="Pilih semua" /></th>
+						<th class="w-10"><input type="checkbox" onchange={toggleSelectAll} checked={selected.size === view.data.length && view.data.length > 0} class="wt-checkbox" aria-label="Pilih semua" /></th>
 						<th><span class="kt-table-col"><span class="kt-table-col-label">Pengirim</span></span></th>
 						<th><span class="kt-table-col"><span class="kt-table-col-label">Pesan</span></span></th>
 						<th class="w-[100px] hidden md:table-cell"><span class="kt-table-col"><span class="kt-table-col-label">Waktu</span></span></th>
@@ -281,7 +281,7 @@
 				<tbody>
 					{#each view.data as msg}
 						<tr class="hover:bg-muted/30 transition-colors {!msg.isRead ? 'font-medium' : ''} {expandedClassify === msg.id ? 'bg-muted/40' : ''}" onclick={() => { if (window.innerWidth < 768) expandedClassify = expandedClassify === msg.id ? null : msg.id; }}>
-							<td onclick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected(msg.id)} onchange={() => toggleSelect(msg.id)} class="kt-checkbox" aria-label="Pilih pesan" /></td>
+							<td onclick={(e) => e.stopPropagation()}><input type="checkbox" checked={isSelected(msg.id)} onchange={() => toggleSelect(msg.id)} class="wt-checkbox" aria-label="Pilih pesan" /></td>
 							<td class="whitespace-nowrap">
 								<div class="flex items-center gap-2">
 									<div class="kt-avatar size-8">
@@ -292,7 +292,10 @@
 									<div class="flex flex-col">
 										<span class="text-sm text-foreground {!msg.isRead ? 'font-semibold' : 'font-normal'}">{msg.fromName || maskPhone(msg.fromPhone)}</span>
 										{#if msg.source}
-											<span class="text-2xs text-muted-foreground hidden md:inline">{msg.source.name}</span>
+											<span class="text-2xs text-muted-foreground hidden md:inline" title={msg.fromPhone ? `📞 ${msg.fromPhone}` : ''}>
+												<i class="ki-filled {msg.source.type === 'group' ? 'ki-people' : 'ki-profile-circle'} text-[10px] mr-0.5"></i>
+												{msg.source.name}
+											</span>
 										{/if}
 									</div>
 								</div>
@@ -343,8 +346,8 @@
 										{classifying && expandedClassify === msg.id ? '...' : 'Classify'}
 									</button>
 									{#if classificationCache[msg.id] && classificationCache[msg.id].is_support_related !== false}
-										<button onclick={(e) => { e.stopPropagation(); createTicket(msg); }} disabled={creating} class="kt-btn kt-btn-mono kt-btn-sm">
-											{creating ? '...' : 'Tiket'}
+										<button onclick={(e) => { e.stopPropagation(); createTicket(msg); }} disabled={creatingPerId.has(msg.id)} class="kt-btn kt-btn-mono kt-btn-sm">
+											{creatingPerId.has(msg.id) ? '...' : 'Tiket'}
 										</button>
 									{/if}
 								</div>
@@ -425,7 +428,7 @@
 </Card>
 
 {#if lightboxMedia}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+	<div class="wt-overlay"
 		onclick={() => lightboxMedia = null}
 		onkeydown={(e) => e.key === 'Escape' && (lightboxMedia = null)}
 		role="presentation"

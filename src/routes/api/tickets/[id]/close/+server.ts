@@ -1,7 +1,7 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
 import { getDb } from "$lib/server/db/index.js";
 
-export const POST: RequestHandler = async ({ params, request }) => {
+export const POST: RequestHandler = async ({ params, request, locals }) => {
   if (!params.id) return json({ error: "Missing ticket id" }, { status: 400 });
   const db = getDb();
   const body = await request.json().catch(() => ({}));
@@ -41,6 +41,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
       entity: "ticket",
       entityId: params.id,
       detail: JSON.stringify({ reason }),
+      userId: locals.user?.id || null,
     },
   });
 

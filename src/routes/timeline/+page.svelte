@@ -232,21 +232,21 @@
 	<Card bodyClass="p-4 lg:p-5">
 		<div class="flex flex-col gap-3">
 			<div class="flex items-center justify-between gap-2">
-			<div class="kt-segmented">
+			<div class="wt-segmented">
 				<button
-					class="kt-segmented-item {filterDate === 'today' ? 'active' : ''}"
+					class="wt-segmented-item {filterDate === 'today' ? 'active' : ''}"
 					onclick={() => applyDatePreset('today')}
 				>Hari Ini</button>
 				<button
-					class="kt-segmented-item {filterDate === '7days' ? 'active' : ''}"
+					class="wt-segmented-item {filterDate === '7days' ? 'active' : ''}"
 					onclick={() => applyDatePreset('7days')}
 				>7 Hari</button>
 				<button
-					class="kt-segmented-item {filterDate === '30days' ? 'active' : ''}"
+					class="wt-segmented-item {filterDate === '30days' ? 'active' : ''}"
 					onclick={() => applyDatePreset('30days')}
 				>30 Hari</button>
 				<button
-					class="kt-segmented-item {filterDate === 'custom' ? 'active' : ''}"
+					class="wt-segmented-item {filterDate === 'custom' ? 'active' : ''}"
 					onclick={() => applyDatePreset('custom')}
 				>Custom</button>
 			</div>
@@ -262,7 +262,7 @@
 			<div class="flex flex-wrap items-center gap-x-4 gap-y-2">
 				<div class="flex items-center gap-1.5">
 					<i class="ki-filled ki-folder text-sm text-muted-foreground/70 shrink-0"></i>
-					<select class="kt-filter-select" bind:value={filterSource} onchange={applyFilter}>
+					<select class="wt-filter-select" bind:value={filterSource} onchange={applyFilter}>
 						<option value="">Semua Sumber</option>
 						{#each settings.sources || [] as s}
 							<option value={s.id}>{s.name}</option>
@@ -271,7 +271,7 @@
 				</div>
 				<div class="flex items-center gap-1.5">
 					<i class="ki-filled ki-category text-sm text-muted-foreground/70 shrink-0"></i>
-					<select class="kt-filter-select" bind:value={filterType} onchange={applyFilter}>
+					<select class="wt-filter-select" bind:value={filterType} onchange={applyFilter}>
 						<option value="all">Semua Pesan</option>
 						<option value="support">Support Related</option>
 					</select>
@@ -281,12 +281,12 @@
 					<div class="flex items-center gap-2">
 						<i class="ki-filled ki-calendar text-sm text-muted-foreground/70 shrink-0 hidden md:block"></i>
 						<input type="date"
-							class="kt-filter-input w-[145px]"
+							class="wt-filter-input w-[145px]"
 							bind:value={filterStart} onchange={applyFilter}
 						/>
 						<span class="text-xs text-muted-foreground/60">—</span>
 						<input type="date"
-							class="kt-filter-input w-[145px]"
+							class="wt-filter-input w-[145px]"
 							bind:value={filterEnd} onchange={applyFilter}
 						/>
 					</div>
@@ -298,15 +298,15 @@
 	{#if loading}
 		<div class="flex items-center justify-center py-16">
 			<div class="flex flex-col items-center gap-3">
-				<div class="kt-spinner-ring size-8"></div>
+				<div class="wt-spinner-ring size-8"></div>
 				<span class="text-sm text-muted-foreground">Memuat timeline...</span>
 			</div>
 		</div>
 	{:else if daySections().length === 0}
-		<div class="kt-empty">
-			<i class="ki-filled ki-messages kt-empty-icon"></i>
-			<p class="kt-empty-text">Belum ada pesan</p>
-			<p class="kt-empty-sub">Import pesan atau jalankan WhatsApp worker</p>
+		<div class="wt-empty">
+			<i class="ki-filled ki-messages wt-empty-icon"></i>
+			<p class="wt-empty-text">Belum ada pesan</p>
+			<p class="wt-empty-sub">Import pesan atau jalankan WhatsApp worker</p>
 		</div>
 	{:else}
 		<div class="flex flex-col gap-5 lg:gap-7.5">
