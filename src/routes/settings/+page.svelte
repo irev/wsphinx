@@ -181,6 +181,7 @@
 	}
 
 	import { waStatus, refreshNow } from '$lib/stores/wa-status.svelte';
+	import { waProfile, refreshProfile } from '$lib/stores/wa-profile.svelte';
 
 	// ── WA Connection ──
 	let waHealth = $state<{ worker: string; status: string; latency: number | null; uptime: number; reconnectAttempts: number; maxReconnectAttempts: number } | null>(null);
@@ -849,6 +850,22 @@
 							{:else}
 								<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
 							{/if}
+						</div>
+					{/if}
+
+					<!-- Connected Profile -->
+					{#if waStatus.status === 'connected' && waProfile.loaded}
+						<div class="rounded-lg bg-muted/30 p-3 flex items-center gap-3">
+							{#if waProfile.photoPath}
+								<img src={waProfile.photoPath} alt={waProfile.pushname} class="size-12 rounded-full object-cover" />
+							{:else}
+								<div class="size-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-lg">{(waProfile.pushname || '?')[0].toUpperCase()}</div>
+							{/if}
+							<div class="flex flex-col gap-0.5 min-w-0">
+								<span class="text-sm font-medium text-foreground truncate">{waProfile.pushname}</span>
+								<span class="text-xs text-muted-foreground">{waProfile.phone}</span>
+								<span class="text-2xs text-muted-foreground/60">{waProfile.wid}{waProfile.platform ? ' · ' + waProfile.platform : ''}</span>
+							</div>
 						</div>
 					{/if}
 
