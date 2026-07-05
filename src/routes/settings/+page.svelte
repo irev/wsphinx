@@ -173,6 +173,13 @@
 	let activeMenu = $state<string>('priorities');
 	let actionMenuId = $state<string | null>(null);
 
+	const ABORT_TIMEOUT = 5000;
+	function fetchWithTimeout(url: string, opts: RequestInit = {}): Promise<Response> {
+		const ctrl = new AbortController();
+		const id = setTimeout(() => ctrl.abort(), ABORT_TIMEOUT);
+		return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id));
+	}
+
 	// ── WA Connection ──
 	let waStatus = $state<{ status: string; qrCode: string | null }>({ status: 'loading', qrCode: null });
 	let waHealth = $state<{ worker: string; status: string; latency: number | null; uptime: number; reconnectAttempts: number; maxReconnectAttempts: number } | null>(null);
@@ -209,30 +216,42 @@
 		}
 	}
 
+	let waQrError = $state(false);
+
 	async function fetchWaQr() {
+		waQrError = false;
 		try {
-			const res = await fetch('/api/whatsapp/qr-image');
+			const res = await fetchWithTimeout('/api/whatsapp/qr-image');
 			if (res.ok) {
 				const d = await res.json();
 				waQrImage = d.qrImage || null;
+				waQrError = d.qrImage == null;
 			} else {
 				waQrImage = null;
+				waQrError = true;
 			}
 		} catch {
 			waQrImage = null;
+			waQrError = true;
 		}
 	}
 
 	async function checkWaHealth() {
 		waHealthLoading = true;
 		try {
-			const res = await fetch('/api/whatsapp/health');
+			const res = await fetchWithTimeout('/api/whatsapp/health');
 			const d = await res.json();
-			waHealth = d;
+			if (d && typeof d.worker === 'string' && typeof d.uptime === 'number') {
+				waHealth = d;
+			} else {
+				waHealth = { worker: 'invalid_response', status: 'error', latency: null, uptime: 0, reconnectAttempts: 0, maxReconnectAttempts: 10 };
+				showToast('info', 'Health response tidak sesuai format');
+			}
 			waHealthTimestamp = Date.now();
 		} catch {
 			waHealth = { worker: 'unreachable', status: 'error', latency: null, uptime: 0, reconnectAttempts: 0, maxReconnectAttempts: 10 };
 			waHealthTimestamp = Date.now();
+			showToast('error', 'Health check — worker unreachable');
 		}
 		waHealthLoading = false;
 	}
@@ -240,7 +259,7 @@
 	async function waDisconnect() {
 		waDisconnectLoading = true;
 		try {
-			const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+			const res = await fetchWithTimeout('/api/whatsapp/disconnect', { method: 'POST' });
 			if (res.ok) {
 				showToast('success', 'WhatsApp disconnected');
 				waQrImage = null;
@@ -248,14 +267,14 @@
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		waDisconnectLoading = false;
 		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
+		waDisconnectLoading = false;
 	}
 
 	async function waDisconnectAndClear() {
 		waDisconnectLoading = true;
 		try {
-			const res = await fetch('/api/whatsapp/session/clear', { method: 'POST' });
+			const res = await fetchWithTimeout('/api/whatsapp/session/clear', { method: 'POST' });
 			if (res.ok) {
 				showToast('success', 'Logged out — session cleared');
 				waSessionInfo = { exists: false, createdAt: null, size: null };
@@ -264,15 +283,15 @@
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		waDisconnectLoading = false;
 		waLogoutConfirm = false;
 		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
+		waDisconnectLoading = false;
 	}
 
 	async function waReconnect() {
 		waReconnectLoading = true;
 		try {
-			const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
+			const res = await fetchWithTimeout('/api/whatsapp/reconnect', { method: 'POST' });
 			if (res.ok) {
 				const d = await res.json();
 				showToast('success', 'WhatsApp reconnecting...');
@@ -281,13 +300,13 @@
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		waReconnectLoading = false;
 		await fetchSessionInfo();
+		waReconnectLoading = false;
 	}
 
 	async function fetchSessionInfo() {
 		try {
-			const res = await fetch('/api/whatsapp/session/info');
+			const res = await fetchWithTimeout('/api/whatsapp/session/info');
 			if (res.ok) {
 				const d = await res.json();
 				waSessionInfo = { exists: d.exists || false, createdAt: d.createdAt || null, size: d.size || null };
@@ -302,7 +321,7 @@
 	async function waClearSession() {
 		waSessionLoading = true;
 		try {
-			const res = await fetch('/api/whatsapp/session/clear', { method: 'POST' });
+			const res = await fetchWithTimeout('/api/whatsapp/session/clear', { method: 'POST' });
 			if (res.ok) {
 				showToast('success', 'Session cleared. Scan QR again to login.');
 				waSessionInfo = { exists: false, createdAt: null, size: null };
@@ -318,7 +337,7 @@
 	$effect(() => {
 		if (activeMenu === 'wa-connection') {
 			fetchWaStatus();
-			fetchWaQr();
+			if (waStatus.status === 'scanning_qr') fetchWaQr();
 			fetchSessionInfo();
 			waStatusInterval = setInterval(fetchWaStatus, 3000);
 			waQrInterval = setInterval(() => {
@@ -830,6 +849,11 @@
 							{#if waQrImage}
 								<img src={waQrImage} alt="QR Code" class="size-56 border border-border rounded-xl" />
 								<p class="text-2xs text-muted-foreground text-center mt-1">QR expired dalam ~20 detik, auto-refresh tiap 15 detik</p>
+							{:else if waQrError}
+								<div class="text-center">
+									<p class="text-xs text-destructive mb-1">Gagal memuat QR code</p>
+									<button onclick={fetchWaQr} class="kt-btn kt-btn-xs kt-btn-outline">Coba Lagi</button>
+								</div>
 							{:else}
 								<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
 							{/if}
@@ -938,8 +962,8 @@
 					{#if waHealth}
 						<div class="rounded-lg bg-muted/30 p-3 text-xs space-y-1">
 							<div class="flex justify-between"><span class="text-muted-foreground">Worker</span><span class="font-medium text-foreground">{waHealth.worker}</span></div>
-							<div class="flex justify-between"><span class="text-muted-foreground">Uptime</span><span class="font-medium text-foreground">{formatDuration(waHealth.uptime / 1000)}</span></div>
-							<div class="flex justify-between"><span class="text-muted-foreground">Reconnect attempts</span><span class="font-medium text-foreground">{waHealth.reconnectAttempts}/{waHealth.maxReconnectAttempts}</span></div>
+							<div class="flex justify-between"><span class="text-muted-foreground">Uptime</span><span class="font-medium text-foreground">{formatDuration((waHealth.uptime ?? 0) / 1000)}</span></div>
+							<div class="flex justify-between"><span class="text-muted-foreground">Reconnect attempts</span><span class="font-medium text-foreground">{waHealth.reconnectAttempts ?? 0}/{waHealth.maxReconnectAttempts ?? 10}</span></div>
 						</div>
 					{/if}
 				{/if}
