@@ -182,6 +182,9 @@ async function main() {
           res.end(JSON.stringify({ ok: true }));
         });
         return;
+      } else if (req.method === "GET" && path === "/api/me") {
+        const me = adapter.getMe();
+        res.end(JSON.stringify({ data: me }));
       } else if (req.method === "GET" && path === "/api/status") {
         const state = adapter.getStatus();
         res.end(JSON.stringify({ data: { status: state.status, qrCode: state.qrCode } }));

@@ -49,6 +49,13 @@ export interface ConnectionState {
   qrCode?: string;
 }
 
+export interface ProfileInfo {
+  pushname: string;
+  wid: string;
+  phone: string;
+  platform: string;
+}
+
 export type MessageHandler = (msg: WhatsAppMessage) => void | Promise<void>;
 export type StatusChangeHandler = (state: ConnectionState) => void;
 
@@ -58,6 +65,7 @@ export interface WhatsAppReader {
   disconnect(): Promise<void>;
   restart(): Promise<void>;
   getStatus(): ConnectionState;
+  getMe(): ProfileInfo | null;
   getGroups(): Promise<GroupInfo[]>;
   getContacts(): Promise<ContactInfo[]>;
   getMessages(chatId: string, limit?: number): Promise<WhatsAppMessage[]>;

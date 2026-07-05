@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { waStatus } from '$lib/stores/wa-status.svelte';
+	import { waProfile } from '$lib/stores/wa-profile.svelte';
 
 	let { currentPage = '' } = $props();
 
@@ -82,13 +83,17 @@
 					{/if}
 				</button>
 				<div class="flex items-center gap-2 ps-2 lg:ps-4 border-s border-border" title={statusTitle(waStatus.status)}>
-				<div class="kt-avatar-image size-[34px] rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">R</div>
+				{#if waProfile.photoPath}
+					<img src={waProfile.photoPath} alt={waProfile.pushname} class="size-[34px] rounded-full object-cover" />
+				{:else}
+					<div class="kt-avatar-image size-[34px] rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">{(waProfile.pushname || 'R')[0].toUpperCase()}</div>
+				{/if}
 				<div class="hidden lg:flex flex-col">
 					<span class="text-sm font-medium text-foreground leading-none flex items-center gap-1.5">
 						<span class="size-2 rounded-full {statusColor(waStatus.status)} {waStatus.status === 'connected' ? 'animate-ping' : ''}"></span>
-						PIC Satu
+						{waProfile.pushname || (waProfile.loaded ? waProfile.phone : 'PIC Satu')}
 					</span>
-						<span class="text-2xs font-normal text-muted-foreground mt-0.5">Teknisi</span>
+						<span class="text-2xs font-normal text-muted-foreground mt-0.5">{waProfile.phone ? waProfile.phone : 'Teknisi'}</span>
 					</div>
 				</div>
 			</div>

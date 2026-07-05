@@ -557,6 +557,21 @@ export class WebJSAdapter implements WhatsAppReader {
     return { status: this.status, qrCode: this.qrCode };
   }
 
+  getMe(): import("./adapter.js").ProfileInfo | null {
+    try {
+      const info = (this.client as any).info;
+      if (!info || !info.wid) return null;
+      return {
+        pushname: info.pushname || '',
+        wid: info.wid._serialized || '',
+        phone: info.wid.user || '',
+        platform: info.platform || '',
+      };
+    } catch {
+      return null;
+    }
+  }
+
   getReconnectInfo() {
     return { reconnectAttempts: this.reconnectAttempts, maxReconnectAttempts: this.maxReconnectAttempts };
   }
