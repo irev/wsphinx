@@ -81,6 +81,21 @@ async function main() {
     prisma.appSetting.upsert({ where: { key: "wa_after_hours_template" }, update: {}, create: { key: "wa_after_hours_template", value: "Halo {name}, terima kasih atas laporannya. Saat ini di luar jam operasional support (Senin-Jumat 08:00-17:00, Sabtu 08:00-12:00). Tim support akan menindaklanjuti laporan Anda pada jam kerja berikutnya. Terima kasih." } }),
   ]);
 
+  if (source?.phone) {
+    await prisma.whatsAppContactPolicy.upsert({
+      where: { phone: source.phone },
+      update: { displayName: source.name, hasInboundHistory: true, isOptedIn: true },
+      create: { phone: source.phone, displayName: source.name, hasInboundHistory: true, isOptedIn: true },
+    });
+  }
+  for (const u of pics) {
+    await prisma.whatsAppContactPolicy.upsert({
+      where: { phone: u.phone },
+      update: { displayName: u.name, hasInboundHistory: true, isOptedIn: true },
+      create: { phone: u.phone, displayName: u.name, hasInboundHistory: true, isOptedIn: true },
+    });
+  }
+
   console.log("Seed completed (idempotent)");
   console.log(`  ${priorities.length} priorities`);
   console.log(`  ${statuses.length} statuses`);

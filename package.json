@@ -10,6 +10,7 @@
 		"preview": "tsx scripts/check-ports.ts --preview && vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"seed": "tsx prisma/seed.ts",
+"backfill": "tsx prisma/backfill-contact-policy.ts",
 		"worker": "tsx scripts/check-ports.ts --worker && tsx worker/index.ts",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

@@ -273,6 +273,10 @@ async function main() {
     console.log(`Worker API listening on http://127.0.0.1:${API_PORT}`);
   });
 
+  let lastDisconnectedTime = 0;
+  let sessionLogoutAlertSent = false;
+  let consecutiveFailLogSent = false;
+
   async function processOutboxLoop() {
     while (true) {
       try {
@@ -286,6 +290,46 @@ async function main() {
     }
   }
   processOutboxLoop().catch((e) => console.error("[Outbox] Loop fatal:", e));
+
+  async function monitorAlerts() {
+    while (true) {
+      try {
+        const status = adapter.getStatus().status;
+        if (status === "disconnected" || status === "expired") {
+          if (lastDisconnectedTime === 0) lastDisconnectedTime = Date.now();
+          if (Date.now() - lastDisconnectedTime > 300_000 && !sessionLogoutAlertSent) {
+            console.error("[ALERT] Session WhatsApp terputus >5 menit — butuh intervensi manual!");
+            sessionLogoutAlertSent = true;
+            const db = getDb();
+            await db.auditLog.create({
+              data: { action: "connection.stuck", entity: "worker", detail: JSON.stringify({ status, durationMs: Date.now() - lastDisconnectedTime }) },
+            }).catch(() => {});
+          }
+        } else {
+          lastDisconnectedTime = 0;
+          sessionLogoutAlertSent = false;
+        }
+
+        if (status === "connected") {
+          const db = getDb();
+          const recentFailed = await db.whatsAppOutbox.count({
+            where: { status: "failed", updatedAt: { gte: new Date(Date.now() - 3600_000) } },
+          }).catch(() => 0);
+          if (recentFailed >= 5 && !consecutiveFailLogSent) {
+            console.error("[ALERT] %d pesan gagal dalam 1 jam terakhir — kemungkinan ada masalah teknis!", recentFailed);
+            consecutiveFailLogSent = true;
+            await db.auditLog.create({
+              data: { action: "outbox.failure_spike", entity: "outbox", detail: JSON.stringify({ recentFailed, windowMinutes: 60 }) },
+            }).catch(() => {});
+          } else if (recentFailed < 5) {
+            consecutiveFailLogSent = false;
+          }
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, 30_000));
+    }
+  }
+  monitorAlerts().catch((e) => console.error("[Monitor] Fatal:", e));
 
   try {
     await adapter.connect();

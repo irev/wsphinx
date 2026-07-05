@@ -99,6 +99,15 @@ export async function maybeAutoReply(
   const limits = await checkAutoReplyLimits(msg.chatId, msg.fromPhone);
   if (!limits.allowed) {
     console.log("[AutoReply] Skipped: %s (chatId=%s, phone=%s)", limits.reason, msg.chatId, msg.fromPhone);
+    try {
+      await db.auditLog.create({
+        data: {
+          action: "auto_reply.skipped",
+          entity: "outbox",
+          detail: JSON.stringify({ chatId: msg.chatId, phone: msg.fromPhone, reason: limits.reason }),
+        },
+      });
+    } catch {}
     return;
   }
 

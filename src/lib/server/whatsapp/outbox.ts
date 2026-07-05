@@ -11,30 +11,47 @@ interface OutboxInput {
   maxRetries?: number;
 }
 
+async function writeBlockedAudit(chatId: string, reason: string, detail: Record<string, unknown>) {
+  try {
+    const db = getDb();
+    await db.auditLog.create({
+      data: {
+        action: "message.blocked_by_policy",
+        entity: "outbox",
+        detail: JSON.stringify({ chatId, reason, ...detail }),
+      },
+    });
+  } catch {}
+}
+
 export async function enqueueOutgoing(input: OutboxInput): Promise<{
   success: boolean;
   outboxId?: string;
   error?: string;
   blockedReason?: string;
 }> {
+  const db = getDb();
+
   const businessHour = await isBusinessHour();
   if (!businessHour) {
+    await writeBlockedAudit(input.chatId, "outside_business_hours", {});
     return { success: false, error: "outside_business_hours", blockedReason: "outside_business_hours" };
   }
 
   if (input.phone) {
     const policy = await checkContactPolicy(input.phone, input.chatId);
     if (!policy.allowed) {
+      await writeBlockedAudit(input.chatId, policy.reason!, { phone: input.phone });
       return { success: false, error: policy.reason, blockedReason: policy.reason };
     }
   }
 
   const rate = await canSendMessage(input.chatId);
   if (!rate.allowed) {
+    await writeBlockedAudit(input.chatId, rate.reason!, { details: rate.details });
     return { success: false, error: rate.reason, blockedReason: rate.reason };
   }
 
-  const db = getDb();
   const outbox = await db.whatsAppOutbox.create({
     data: {
       chatId: input.chatId,
