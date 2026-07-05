@@ -4,6 +4,9 @@ import path from "node:path";
 const require = createRequire(import.meta.url);
 
 const { Client, LocalAuth } = require("whatsapp-web.js");
+const puppeteerExtra = require("puppeteer-extra");
+const StealthPlugin = require("puppeteer-extra-plugin-stealth");
+puppeteerExtra.use(StealthPlugin());
 type Message = import("whatsapp-web.js").Message;
 import type {
   WhatsAppReader,
@@ -16,7 +19,7 @@ import type {
 import { findChromeExecutable } from "./chrome-helper.js";
 import { getDb } from "../db/index.js";
 
-const SESSION_BASE_DIR = path.resolve(process.env.WA_SESSION_PATH || ".session-data");
+const SESSION_BASE_DIR = path.resolve(process.env.WA_SESSION_PATH || "whatsapp-session");
 
 export class WebJSAdapter implements WhatsAppReader {
   readonly name = "whatsapp-web.js";
@@ -53,6 +56,7 @@ export class WebJSAdapter implements WhatsAppReader {
     const ua = WebJSAdapter.STABLE_USER_AGENT;
     const vp = WebJSAdapter.STABLE_VIEWPORT;
     const puppeteerOpts: Record<string, unknown> = {
+      handle: puppeteerExtra,
       headless: true,
       protocolTimeout: 180_000,
       args: [
@@ -558,7 +562,7 @@ export class WebJSAdapter implements WhatsAppReader {
     try {
       const chat = await this.client.getChatById(chatId);
       await chat.sendStateTyping();
-      await new Promise((r) => setTimeout(r, 2000 + Math.random() * 4000));
+      await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 5000) + 3000));
       await chat.sendMessage(text);
       await chat.clearState();
     } catch (e) {

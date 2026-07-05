@@ -104,7 +104,7 @@ Key relationships: message → ticket (1:1 via join table), ticket → updates (
 - **Authentication**: Semua `/api/*` route wajib JWT valid (kecuali `/api/auth/login`). Login page di `/login`. Role-based access: `admin` = full, `pic` = tickets + messages, `user` = read-only.
 - **Phone numbers**: Mask di API response menggunakan `maskInApi()` helper. Anonimkan sebelum dikirim ke Ollama.
 - **Rate limit**: 100 request/menit per IP. Ditingkatkan untuk production.
-- **Do not commit**: `.env`, `*.db`, `.session-data/`, `generated/`, `node_modules/`
+- **Do not commit**: `.env`, `*.db`, `.session-data/`, `whatsapp-session/`, `generated/`, `node_modules/`
 
 ## AI / LLM rules
 

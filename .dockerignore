@@ -4,6 +4,7 @@
 *.db-journal
 node_modules/
 .session-data/
+whatsapp-session/
 logs/
 generated/
 .git/

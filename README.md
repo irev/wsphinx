@@ -158,7 +158,7 @@ pm2 delete all                # Hapus dari daftar
 | `WHATSAPP_SOURCE_NAME` | `Grup Support IT` | Nama source WhatsApp dari seed |
 | `WHATSAPP_PHONE` | (wajib diisi) | Nomor telepon untuk source seed |
 | `JWT_SECRET` | (wajib diisi) | Secret key untuk JWT session |
-| `WA_SESSION_PATH` | `.session-data` | Path penyimpanan sesi WhatsApp |
+| `WA_SESSION_PATH` | `whatsapp-session` | Path penyimpanan sesi WhatsApp |
 
 ## Port yang digunakan
 

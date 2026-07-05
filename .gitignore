@@ -35,8 +35,8 @@ test.db-journal
 /media
 
 # WhatsApp session
+whatsapp-session/
 .session-data/
-*.session-data/
 .whatsapp-status.json
 
 # Editor
