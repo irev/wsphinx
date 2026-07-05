@@ -6,6 +6,27 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 
 ## Unreleased
 
+### Added
+- **Session persistence** — `getSessionInfo()` dan `clearSession()` di `WhatsAppReader` interface & `WebJSAdapter`; worker endpoint `GET /api/session/info` dan `POST /api/session/clear`; proxy SvelteKit
+- **Session UI** di Settings → Connection: status saved session (Available/None), created date, file size; toggle Session Persistence; tombol Clear Session dengan konfirmasi
+- **Auto-clear session**: saat `wa_session_persistence = false`, session otomatis dihapus saat disconnect
+- Seed: `wa_session_persistence = true`
+
+### Changed
+- Settings → Connection: load `waSettings` juga untuk session persistence toggle
+- `$effect` settings: include `wa-connection` untuk load app settings
+- **State machine adapter**: tambah flag `disconnecting` + `connecting` untuk cegah race condition `restart()` vs `disconnect()`
+- **Label tombol**: "Logout" → "Disconnect" (hanya putus koneksi, session tetap). Logout asli (clear session) pindah ke tombol merah terpisah dengan konfirmasi
+- **Loading states dipisah**: `waDisconnectLoading`, `waReconnectLoading`, `waHealthLoading` masing-masing independen
+- **"Last Health Check"**: sekarang menampilkan `timeAgo(timestamp)` bukan `formatUptime(waHealth.uptime)` yang misleading
+
+### Added
+- **QR auto-refresh**: interval 15 detik saat status `scanning_qr` — QR expired ~20 detik, auto-refresh cegah QR basi
+- **Status `initializing`**: warna violet + `animate-pulse` di sidebar dan connection card (sebelumnya jatuh ke merah/destructive)
+- **`bg-info`** utility class di `custom.css`
+- **Health details card**: tampilkan reconnect attempts, uptime (format `formatDuration`)
+- **Guard `sendMessage()`**: throw error jika status bukan `connected` (sebelumnya silent fail)
+
 ### Fixed
 - ScrollToTop button position: `bottom-6` → `bottom-8`, added missing Tailwind classes (`opacity-0`, `translate-y-3`, `scale-95/100`, `pointer-events-none`, `z-50`, `right-6`, dll) ke `custom.css` — precompiled `styles.css` tidak mengandung utility classes tersebut
 - Sources page: double `kt-container-fixed` wrapper dihapus (padding dobel)

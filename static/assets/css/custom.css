@@ -316,3 +316,7 @@ textarea.kt-input {
 @media (width >= 1280px) {
   .xl\:w-\[240px\] { width: 240px; }
 }
+
+/* ── Background colors (not in precompiled styles.css) ── */
+.bg-info { background-color: var(--color-violet-500); }
+.bg-info\/10 { background-color: color-mix(in srgb, var(--color-violet-500) 10%, transparent); }

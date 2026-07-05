@@ -38,6 +38,8 @@ export class WebJSAdapter implements WhatsAppReader {
   private maxReconnectAttempts = 10;
   private disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private restarting = false;
+  private disconnecting = false;
+  private connecting = false;
   private restartTimeout: ReturnType<typeof setTimeout> | null = null;
   private messageQueue: WhatsAppMessage[] = [];
   private processing = false;
@@ -283,17 +285,20 @@ export class WebJSAdapter implements WhatsAppReader {
     console.log(`Reconnecting in ${Math.round(delay / 1000)}s (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     this.disconnectTimeout = setTimeout(async () => {
-      if (this.status === "connected") return;
+      if (this.status === "connected" || this.disconnecting || this.restarting) return;
       this.status = "reconnecting";
       this.emitStatus({ status: "reconnecting" });
       try {
         await this.client.destroy().catch(() => {});
+        if (this.disconnecting || this.restarting) return;
         this.client = this.createClient();
         this.setupListeners();
         await this.client.initialize();
       } catch (e) {
         console.error("Reconnect failed:", (e as Error).message);
-        await this.scheduleReconnect();
+        if (!this.disconnecting && !this.restarting) {
+          await this.scheduleReconnect();
+        }
       }
     }, delay);
   }
@@ -408,16 +413,27 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   async connect() {
-    await this.client.initialize();
+    if (this.connecting || this.disconnecting) return;
+    this.connecting = true;
+    try {
+      await this.client.initialize();
+    } finally {
+      this.connecting = false;
+    }
   }
 
   async disconnect() {
+    if (this.disconnecting) return;
+    this.disconnecting = true;
     this.restarting = false;
     if (this.disconnectTimeout) clearTimeout(this.disconnectTimeout);
     if (this.restartTimeout) clearTimeout(this.restartTimeout);
-    await this.client.destroy();
+    try {
+      await this.client.destroy();
+    } catch {}
     this.status = "disconnected";
     this.emitStatus({ status: "disconnected" });
+    this.disconnecting = false;
     // Auto-clear session if persistence is disabled
     try {
       const db = getDb();
@@ -430,7 +446,7 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   async restart() {
-    if (this.restarting) return;
+    if (this.restarting || this.disconnecting) return;
     this.restarting = true;
     if (this.disconnectTimeout) clearTimeout(this.disconnectTimeout);
     if (this.restartTimeout) clearTimeout(this.restartTimeout);
@@ -438,6 +454,12 @@ export class WebJSAdapter implements WhatsAppReader {
     try {
       await this.client.destroy().catch(() => {});
     } catch {}
+    // Abort if disconnect() was called while we were destroying
+    if (!this.restarting) {
+      this.status = "disconnected";
+      this.emitStatus({ status: "disconnected" });
+      return;
+    }
     this.client = this.createClient();
     this.setupListeners();
     try {
@@ -515,6 +537,10 @@ export class WebJSAdapter implements WhatsAppReader {
   }
 
   async sendMessage(chatId: string, text: string): Promise<void> {
+    if (this.status !== "connected") {
+      console.error("[WA] Cannot send message: not connected (status=%s)", this.status);
+      throw new Error(`WhatsApp not connected (status: ${this.status})`);
+    }
     try {
       const chat = await this.client.getChatById(chatId);
       await chat.sendStateTyping();
@@ -523,6 +549,7 @@ export class WebJSAdapter implements WhatsAppReader {
       await chat.clearState();
     } catch (e) {
       console.error("[WA] Gagal kirim pesan:", e);
+      throw e;
     }
   }
 

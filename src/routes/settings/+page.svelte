@@ -176,13 +176,19 @@
 	// ── WA Connection ──
 	let waStatus = $state<{ status: string; qrCode: string | null }>({ status: 'loading', qrCode: null });
 	let waHealth = $state<{ worker: string; status: string; latency: number | null; uptime: number; reconnectAttempts: number; maxReconnectAttempts: number } | null>(null);
+	let waHealthTimestamp = $state<number | null>(null);
 	let waHealthLoading = $state(false);
+	let waDisconnectLoading = $state(false);
+	let waReconnectLoading = $state(false);
 	let waQrImage = $state<string | null>(null);
-	let waActionLoading = $state(false);
 	let waSessionInfo = $state<{ exists: boolean; createdAt: string | null; size: number | null }>({ exists: false, createdAt: null, size: null });
 	let waSessionLoading = $state(false);
 	let waClearConfirm = $state(false);
+	let waLogoutConfirm = $state(false);
 	let waStatusInterval: ReturnType<typeof setInterval> | undefined;
+	let waQrInterval: ReturnType<typeof setInterval> | undefined;
+
+	function isStatusInitializing(s: string) { return s === 'initializing'; }
 
 	async function fetchWaStatus() {
 		try {
@@ -218,27 +224,48 @@
 			const res = await fetch('/api/whatsapp/health');
 			const d = await res.json();
 			waHealth = d;
+			waHealthTimestamp = Date.now();
 		} catch {
 			waHealth = { worker: 'unreachable', status: 'error', latency: null, uptime: 0, reconnectAttempts: 0, maxReconnectAttempts: 10 };
+			waHealthTimestamp = Date.now();
 		}
 		waHealthLoading = false;
 	}
 
 	async function waDisconnect() {
-		waActionLoading = true;
+		waDisconnectLoading = true;
 		try {
 			const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
-			if (res.ok) showToast('success', 'WhatsApp disconnected');
-			else showToast('error', 'Gagal disconnect');
+			if (res.ok) {
+				showToast('success', 'WhatsApp disconnected');
+				waQrImage = null;
+			} else showToast('error', 'Gagal disconnect');
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		waActionLoading = false;
-		await fetchWaStatus();
+		waDisconnectLoading = false;
+		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
+	}
+
+	async function waDisconnectAndClear() {
+		waDisconnectLoading = true;
+		try {
+			const res = await fetch('/api/whatsapp/session/clear', { method: 'POST' });
+			if (res.ok) {
+				showToast('success', 'Logged out — session cleared');
+				waSessionInfo = { exists: false, createdAt: null, size: null };
+				waQrImage = null;
+			} else showToast('error', 'Gagal logout');
+		} catch {
+			showToast('error', 'Worker unreachable');
+		}
+		waDisconnectLoading = false;
+		waLogoutConfirm = false;
+		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
 	}
 
 	async function waReconnect() {
-		waActionLoading = true;
+		waReconnectLoading = true;
 		try {
 			const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
 			if (res.ok) {
@@ -249,7 +276,8 @@
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		waActionLoading = false;
+		waReconnectLoading = false;
+		await fetchSessionInfo();
 	}
 
 	async function fetchSessionInfo() {
@@ -288,9 +316,29 @@
 			fetchWaQr();
 			fetchSessionInfo();
 			waStatusInterval = setInterval(fetchWaStatus, 3000);
-			return () => { if (waStatusInterval) clearInterval(waStatusInterval); };
+			waQrInterval = setInterval(() => {
+				if (waStatus.status === 'scanning_qr') fetchWaQr();
+			}, 15000);
+			return () => {
+				if (waStatusInterval) clearInterval(waStatusInterval);
+				if (waQrInterval) clearInterval(waQrInterval);
+			};
 		}
 	});
+
+	function formatDuration(seconds: number): string {
+		if (seconds < 60) return `${Math.round(seconds)}s`;
+		if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${Math.round(seconds % 60)}s`;
+		return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+	}
+
+	function timeAgo(timestamp: number): string {
+		const diff = Math.floor((Date.now() - timestamp) / 1000);
+		if (diff < 5) return 'just now';
+		if (diff < 60) return `${diff}s ago`;
+		if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+		return `${Math.floor(diff / 3600)}h ago`;
+	}
 
 	// ── WA App Settings ──
 	let waSettings = $state<Record<string, string>>({});
@@ -445,15 +493,6 @@
 		priorities: 'Prioritas', statuses: 'Status', categories: 'Kategori', users: 'User', sources: 'Source'
 	};
 
-	function formatUptime(ms: number): string {
-		const s = Math.floor(ms / 1000);
-		const m = Math.floor(s / 60);
-		const h = Math.floor(m / 60);
-		if (h > 0) return `${h}j ${m % 60}m`;
-		if (m > 0) return `${m}m ${s % 60}d`;
-		return `${s}d`;
-	}
-
 	function parseBusinessHours(json: string | undefined, day: string): { start: string; end: string } {
 		try {
 			const h = JSON.parse(json || '{}');
@@ -529,7 +568,7 @@
 				<button onclick={() => activeMenu = 'wa-connection'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'wa-connection' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
 					<i class="ki-filled ki-check-circle text-sm shrink-0"></i>
 					Connection
-					<span class="ml-auto inline-block size-2 rounded-full {waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'loading' ? 'bg-muted-foreground' : 'bg-destructive'}"></span>
+					<span class="ml-auto inline-block size-2 rounded-full {waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'initializing' ? 'bg-info animate-pulse' : waStatus.status === 'loading' || waStatus.status === 'worker_offline' ? 'bg-muted-foreground' : 'bg-destructive'}"></span>
 				</button>
 				<button onclick={() => activeMenu = 'wa-autoreply'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'wa-autoreply' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
 					<i class="ki-filled ki-messages text-sm shrink-0"></i>
@@ -764,34 +803,43 @@
 				{#if waStatus.status === 'loading'}
 					<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
 				{:else}
+					<!-- Status indicator -->
+					{@const statusDot = waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'initializing' ? 'bg-info' : waStatus.status === 'worker_offline' ? 'bg-muted-foreground' : 'bg-destructive'}
+					{@const statusLabel = waStatus.status === 'worker_offline' ? 'Worker Offline' : waStatus.status === 'scanning_qr' ? 'Scan QR' : waStatus.status === 'initializing' ? 'Initializing\u2026' : waStatus.status}
 					<div class="flex items-center gap-3">
-						<span class="inline-block size-3 rounded-full {waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'worker_offline' ? 'bg-muted-foreground' : 'bg-destructive'}"></span>
+						<span class="inline-block size-3 rounded-full {statusDot} {waStatus.status === 'initializing' ? 'animate-pulse' : ''}"></span>
 						<div>
-							<span class="font-medium text-foreground text-sm capitalize">{waStatus.status === 'worker_offline' ? 'Worker Offline' : waStatus.status === 'scanning_qr' ? 'Scan QR' : waStatus.status}</span>
+							<span class="font-medium text-foreground text-sm capitalize">{statusLabel}</span>
 							{#if waStatus.status === 'connected'}
 								<span class="text-xs text-success ml-2"><i class="ki-filled ki-check-circle"></i> Terhubung</span>
+							{/if}
+							{#if waStatus.status === 'reconnecting' && waHealth}
+								<span class="text-xs text-warning ml-2">({waHealth.reconnectAttempts}/{waHealth.maxReconnectAttempts})</span>
 							{/if}
 						</div>
 					</div>
 
+					<!-- QR Code (auto-refresh tiap 15 detik) -->
 					{#if waStatus.status === 'scanning_qr'}
 						<div class="flex justify-center py-2">
 							{#if waQrImage}
 								<img src={waQrImage} alt="QR Code" class="size-48 border border-border rounded-xl" />
+								<p class="text-2xs text-muted-foreground text-center mt-1">QR expired dalam ~20 detik, auto-refresh tiap 15 detik</p>
 							{:else}
 								<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
 							{/if}
 						</div>
 					{/if}
 
+					<!-- Connection info grid -->
 					<div class="grid grid-cols-2 gap-4 text-sm">
 						<div class="flex flex-col gap-1">
 							<span class="text-xs text-muted-foreground">Status</span>
-							<span class="font-medium text-foreground capitalize">{waStatus.status}</span>
+							<span class="font-medium text-foreground capitalize">{statusLabel}</span>
 						</div>
 						<div class="flex flex-col gap-1">
 							<span class="text-xs text-muted-foreground">Last Health Check</span>
-							<span class="font-medium text-foreground">{waHealth ? formatUptime(waHealth.uptime) + ' ago' : '—'}</span>
+							<span class="font-medium text-foreground">{waHealthTimestamp ? timeAgo(waHealthTimestamp) : '—'}</span>
 						</div>
 						<div class="flex flex-col gap-1">
 							<span class="text-xs text-muted-foreground">Latency</span>
@@ -835,25 +883,40 @@
 						{/if}
 					</div>
 
+					<!-- Action buttons -->
 					<div class="flex flex-wrap gap-2 pt-1">
 						<button onclick={checkWaHealth} disabled={waHealthLoading} class="kt-btn kt-btn-sm kt-btn-outline">
 							{#if waHealthLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
 							<i class="ki-filled ki-health text-sm"></i>
 							Health Check
 						</button>
-						<button onclick={waReconnect} disabled={waActionLoading || waStatus.status === 'worker_offline'} class="kt-btn kt-btn-sm kt-btn-outline">
-							{#if waActionLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
+						<button onclick={waReconnect} disabled={waReconnectLoading || waStatus.status === 'worker_offline' || waStatus.status === 'initializing'} class="kt-btn kt-btn-sm kt-btn-outline">
+							{#if waReconnectLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
 							<i class="ki-filled ki-refresh text-sm"></i>
 							Reconnect
 						</button>
-						<button onclick={waDisconnect} disabled={waActionLoading || waStatus.status === 'disconnected' || waStatus.status === 'worker_offline'} class="kt-btn kt-btn-sm kt-btn-danger">
+						<button onclick={waDisconnect} disabled={waDisconnectLoading || waStatus.status === 'disconnected' || waStatus.status === 'worker_offline' || waStatus.status === 'initializing'} class="kt-btn kt-btn-sm kt-btn-ghost">
 							<i class="ki-filled ki-power text-sm"></i>
-							Logout
+							Disconnect
 						</button>
-						{#if waSessionInfo.exists}
+						{#if waStatus.status === 'connected' || waStatus.status === 'disconnected' || waStatus.status === 'scanning_qr'}
+							{#if waLogoutConfirm}
+								<div class="flex items-center gap-1.5 w-full pt-1">
+									<span class="text-xs text-destructive font-medium">Logout & clear session?</span>
+									<button onclick={waDisconnectAndClear} disabled={waDisconnectLoading} class="kt-btn kt-btn-xs kt-btn-danger">Yes, Logout</button>
+									<button onclick={() => waLogoutConfirm = false} class="kt-btn kt-btn-xs kt-btn-ghost">Cancel</button>
+								</div>
+							{:else}
+								<button onclick={() => waLogoutConfirm = true} class="kt-btn kt-btn-sm kt-btn-danger">
+									<i class="ki-filled ki-logout text-sm"></i>
+									Logout
+								</button>
+							{/if}
+						{/if}
+						{#if waSessionInfo.exists && !waLogoutConfirm}
 							{#if waClearConfirm}
 								<div class="flex items-center gap-1.5 w-full pt-1">
-									<span class="text-xs text-destructive font-medium">Clear session?</span>
+									<span class="text-xs text-destructive font-medium">Clear saved session?</span>
 									<button onclick={waClearSession} disabled={waSessionLoading} class="kt-btn kt-btn-xs kt-btn-danger">Yes, Clear</button>
 									<button onclick={() => waClearConfirm = false} class="kt-btn kt-btn-xs kt-btn-ghost">Cancel</button>
 								</div>
@@ -866,10 +929,12 @@
 						{/if}
 					</div>
 
+					<!-- Health details -->
 					{#if waHealth}
 						<div class="rounded-lg bg-muted/30 p-3 text-xs space-y-1">
 							<div class="flex justify-between"><span class="text-muted-foreground">Worker</span><span class="font-medium text-foreground">{waHealth.worker}</span></div>
-							<div class="flex justify-between"><span class="text-muted-foreground">Uptime</span><span class="font-medium text-foreground">{formatUptime(waHealth.uptime)}</span></div>
+							<div class="flex justify-between"><span class="text-muted-foreground">Uptime</span><span class="font-medium text-foreground">{formatDuration(waHealth.uptime / 1000)}</span></div>
+							<div class="flex justify-between"><span class="text-muted-foreground">Reconnect attempts</span><span class="font-medium text-foreground">{waHealth.reconnectAttempts}/{waHealth.maxReconnectAttempts}</span></div>
 						</div>
 					{/if}
 				{/if}
