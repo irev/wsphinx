@@ -16,7 +16,7 @@ describe("ruleBasedClassify", () => {
 
   it("detects aplikasi error with high confidence", () => {
     const r = ruleBasedClassify({
-      body: "Aplikasi error terus muncul pas login",
+      body: "Aplikasi error terus muncul, hang dan freeze pas login, tolong segera",
       fromName: "Budi",
       previousMessages: [],
     });

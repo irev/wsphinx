@@ -30,13 +30,15 @@ Klasifikasikan pesan berikut dan berikan output JSON dengan format:
   "uncertainty": ["ketidakpastian 1"]
 }`;
 
+  const truncate = (s: string, max: number) => s.length > max ? s.slice(0, max) + "..." : s;
+
   const messages = [
     { role: "system", content: systemPrompt },
     ...input.previousMessages.slice(-5).map((m, i) => ({
       role: "user" as const,
-      content: `Pesan sebelumnya ${i + 1}: ${m}`,
+      content: `Pesan sebelumnya ${i + 1}: ${truncate(m, 500)}`,
     })),
-    { role: "user", content: `Pesan dari ${input.fromName}: ${input.body}` },
+    { role: "user", content: `Pesan dari ${input.fromName}: ${truncate(input.body, 2000)}` },
   ];
 
   try {
@@ -54,7 +56,19 @@ Klasifikasikan pesan berikut dan berikan output JSON dengan format:
     if (!res.ok) return null;
 
     const data = await res.json();
-    const parsed = JSON.parse(data.message.content) as ClassificationResult;
+    let content = data.message.content;
+
+    if (content.includes("```")) {
+      content = content.replace(/```(?:json)?\s*/gi, "").replace(/\s*```/g, "");
+    }
+
+    const braceStart = content.indexOf("{");
+    const braceEnd = content.lastIndexOf("}");
+    if (braceStart !== -1 && braceEnd > braceStart) {
+      content = content.slice(braceStart, braceEnd + 1);
+    }
+
+    const parsed = JSON.parse(content) as ClassificationResult;
     return parsed;
   } catch {
     return null;

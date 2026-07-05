@@ -6,12 +6,38 @@ export const GET: RequestHandler = async ({ url }) => {
   const db = getDb();
   const isSupport = url.searchParams.get("support") === "true";
   const sourceId = url.searchParams.get("sourceId");
-  const limit = parseInt(url.searchParams.get("limit") || "50");
+  const messageType = url.searchParams.get("messageType");
+  const q = url.searchParams.get("q");
+  const limit = parseInt(url.searchParams.get("limit") || "20");
   const offset = parseInt(url.searchParams.get("offset") || "0");
+  const startDate = url.searchParams.get("startDate");
+  const endDate = url.searchParams.get("endDate");
+  const isProcessed = url.searchParams.get("isProcessed");
+  const isRead = url.searchParams.get("isRead");
+  const isActive = url.searchParams.get("isActive");
 
   const where: Record<string, unknown> = {};
+  where.isActive = isActive === "false" ? false : true;
   if (isSupport) where.isSupportRelated = true;
   if (sourceId) where.sourceId = sourceId;
+  if (messageType) where.messageType = messageType;
+  if (isProcessed === "true") where.isProcessed = true;
+  if (isProcessed === "false") where.isProcessed = false;
+  if (isRead === "true") where.isRead = true;
+  if (isRead === "false") where.isRead = false;
+  if (q) {
+    where.OR = [
+      { body: { contains: q } },
+      { fromName: { contains: q } },
+      { fromPhone: { contains: q } },
+    ];
+  }
+  if (startDate || endDate) {
+    const ts: Record<string, Date> = {};
+    if (startDate) ts.gte = new Date(startDate);
+    if (endDate) ts.lte = new Date(endDate);
+    where.timestamp = ts;
+  }
 
   const [messages, total] = await Promise.all([
     db.whatsAppMessage.findMany({

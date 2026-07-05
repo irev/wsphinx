@@ -115,7 +115,8 @@ export function ruleBasedClassify(input: ClassifyInput): ClassificationResult | 
   if (categoryScore > 0) evidence.push(`Kata kunci kategori "${category}" terdeteksi`);
   if (priorityScore > 0) evidence.push(`Kata kunci prioritas "${priority}" terdeteksi`);
 
-  const confidence = Math.min(0.5 + categoryScore * 0.15 + priorityScore * 0.1, 0.95);
+  const confidence = Math.min(0.5 + categoryScore * 0.1 + priorityScore * 0.05, 0.95);
+  // Threshold 0.7 now requires ~2 category + 2 priority keywords, or 3+ category-only
 
   return {
     is_support_related: true,

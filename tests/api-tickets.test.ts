@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getDb } from "../src/lib/server/db/index.js";
-import { createTicket, updateTicket, closeTicket } from "../src/lib/server/ticket/ticket-builder.js";
+import { createTicket, updateTicket } from "../src/lib/server/ticket/ticket-builder.js";
 
 describe("Ticket Builder (integration)", () => {
   let sourceId: string;
@@ -99,8 +99,11 @@ describe("Ticket Builder (integration)", () => {
       messageIds: [],
     });
 
-    const closed = await closeTicket(ticket.id, "Sudah diperbaiki");
     const closedStatus = await db.supportStatus.findFirst({ where: { name: "Closed" } });
+    const closed = await updateTicket(ticket.id, {
+      statusId: closedStatus!.id,
+      note: "Sudah diperbaiki",
+    });
     expect(closed.statusId).toBe(closedStatus!.id);
   });
 });

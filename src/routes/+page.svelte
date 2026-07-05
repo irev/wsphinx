@@ -51,9 +51,9 @@
 </script>
 
 {#if loading}
-	<div class="flex items-center justify-center py-20">
+	<div class="kt-spinner py-20">
 		<div class="flex flex-col items-center gap-3">
-			<div class="size-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+			<div class="kt-spinner-ring size-8"></div>
 			<span class="text-sm text-muted-foreground">Memuat data...</span>
 		</div>
 	</div>

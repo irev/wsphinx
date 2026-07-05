@@ -2,18 +2,58 @@
 	import { page } from '$app/stores';
 	import Badge from '$lib/components/Badge.svelte';
 	import Button from '$lib/components/Button.svelte';
+	import { maskPhone } from '$lib/utils/mask';
 
 	let ticket = $state<any>(null);
 	let loading = $state(true);
+	let settings = $state<any>({ categories: [], priorities: [], pics: [], statuses: [] });
+
+	let editCategory = $state('');
+	let editPriority = $state('');
+	let editPic = $state('');
+	let editStatus = $state('');
+	let editNote = $state('');
+	let saving = $state(false);
 
 	async function load() {
 		loading = true;
-		const res = await fetch(`/api/tickets/${$page.params.id}`);
-		if (res.ok) ticket = (await res.json()).data;
+		const [ticketRes, setRes] = await Promise.all([
+			fetch(`/api/tickets/${$page.params.id}`),
+			fetch('/api/settings'),
+		]);
+		if (ticketRes.ok) {
+			ticket = (await ticketRes.json()).data;
+			editCategory = ticket.categoryId || '';
+			editPriority = ticket.priorityId || '';
+			editPic = ticket.picId || '';
+			editStatus = ticket.statusId || '';
+		}
+		if (setRes.ok) settings = (await setRes.json()).data;
 		loading = false;
 	}
 
 	$effect(() => { load(); });
+
+	async function save() {
+		saving = true;
+		const body: Record<string, string> = {};
+		if (editCategory !== ticket.categoryId) body.categoryId = editCategory;
+		if (editPriority !== ticket.priorityId) body.priorityId = editPriority;
+		if (editPic !== ticket.picId) body.picId = editPic;
+		if (editStatus !== ticket.statusId) body.statusId = editStatus;
+
+		if (Object.keys(body).length > 0 || editNote) {
+			if (editNote) body.note = editNote;
+			await fetch(`/api/tickets/${$page.params.id}`, {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(body),
+			});
+		}
+		saving = false;
+		editNote = '';
+		await load();
+	}
 
 	let closeReason = $state('');
 
@@ -47,7 +87,7 @@
 </a>
 
 {#if loading}
-	<div class="flex items-center justify-center py-10"><div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+	<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
 {:else if ticket}
 	<div class="grid grid-cols-1 lg:grid-cols-3 gap-5 lg:gap-7.5">
 		<div class="lg:col-span-2 flex flex-col gap-5 lg:gap-7.5">
@@ -64,19 +104,42 @@
 						<div>
 							<span class="text-2xs text-muted-foreground">Pelapor</span>
 							<p class="text-sm font-medium text-foreground">{ticket.reporterName}</p>
-							{#if ticket.reporterPhone}<p class="text-2xs text-muted-foreground">{ticket.reporterPhone}</p>{/if}
+							{#if ticket.reporterPhone}<p class="text-2xs text-muted-foreground">{maskPhone(ticket.reporterPhone)}</p>{/if}
 						</div>
 						<div>
 							<span class="text-2xs text-muted-foreground">Kategori</span>
-							<p class="text-sm font-medium text-foreground">{ticket.category?.name || '-'}</p>
+							<select bind:value={editCategory} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+								<option value="">-</option>
+								{#each settings.categories as cat}
+									<option value={cat.id}>{cat.name}</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<span class="text-2xs text-muted-foreground">Prioritas</span>
-							<p><Badge variant={prioBadge(ticket.priority?.name)} size="sm">{ticket.priority?.name || '-'}</Badge></p>
+							<select bind:value={editPriority} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+								<option value="">-</option>
+								{#each settings.priorities as p}
+									<option value={p.id}>{p.name}</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<span class="text-2xs text-muted-foreground">PIC</span>
-							<p class="text-sm font-medium text-foreground">{ticket.pic?.name || '-'}</p>
+							<select bind:value={editPic} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+								<option value="">-</option>
+								{#each settings.pics as pic}
+									<option value={pic.id}>{pic.name}</option>
+								{/each}
+							</select>
+						</div>
+						<div>
+							<span class="text-2xs text-muted-foreground">Status</span>
+							<select bind:value={editStatus} class="kt-select border border-input rounded-lg px-2 py-1 text-sm w-full mt-0.5">
+								{#each settings.statuses as st}
+									<option value={st.id}>{st.name}</option>
+								{/each}
+							</select>
 						</div>
 						<div>
 							<span class="text-2xs text-muted-foreground">Dibuat</span>
@@ -89,6 +152,14 @@
 							</div>
 						{/if}
 					</div>
+
+					<div class="flex items-center gap-2 mt-4">
+						<Button onclick={save} disabled={saving}>
+							<i class="ki-filled ki-check-circle text-sm"></i> {saving ? '...' : 'Simpan Perubahan'}
+						</Button>
+						<input bind:value={editNote} placeholder="Catatan perubahan (opsional)" class="kt-input border border-input rounded-lg px-3 py-2 text-sm flex-1" />
+					</div>
+
 					<div class="mt-5">
 						<h3 class="text-sm font-semibold text-mono mb-2">Ringkasan</h3>
 						<p class="text-sm text-secondary-foreground whitespace-pre-wrap">{ticket.summary}</p>
@@ -97,13 +168,14 @@
 							<p class="text-sm text-secondary-foreground whitespace-pre-wrap">{ticket.notes}</p>
 						{/if}
 					</div>
+
 					{#if ticket.messages?.length}
 						<div class="mt-5">
 							<h3 class="text-sm font-semibold text-mono mb-3">Pesan Terkait ({ticket.messages.length})</h3>
 							<div class="flex flex-col gap-2">
 								{#each ticket.messages as tm}
 									<div class="bg-muted rounded-lg p-3 text-sm">
-										<p class="text-2xs text-muted-foreground mb-1">{tm.message.fromName || tm.message.fromPhone} — {new Date(tm.message.timestamp).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
+										<p class="text-2xs text-muted-foreground mb-1">{tm.message.fromName || maskPhone(tm.message.fromPhone)} — {new Date(tm.message.timestamp).toLocaleString('id-ID', { timeZone: 'Asia/Jakarta' })}</p>
 										<p class="text-secondary-foreground">{tm.message.body}</p>
 									</div>
 								{/each}

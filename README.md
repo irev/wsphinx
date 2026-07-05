@@ -1,42 +1,100 @@
-# sv
+# WhatsApp Tech Support
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+Sistem manajemen tiket support berbasis WhatsApp.
 
-## Creating a project
+## Prasyarat
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Node.js** >= 18
+- **npm** >= 9
+- **(Opsional)** [Ollama](https://ollama.ai) untuk klasifikasi AI
 
-```sh
-# create a new project
-npx sv create my-app
+## Instalasi
+
+```bash
+# 1. Clone repositori
+git clone <repo-url>
+cd whatapp-techsupt
+
+# 2. Install dependensi
+npm install
+
+# 3. Salin env dan isi konfigurasi
+cp .env .env.local
+# Edit .env.local sesuai kebutuhan (lihat tabel di bawah)
+
+# 4. Generate Prisma client + migrasi database
+npx prisma generate
+npx prisma migrate dev
+
+# 5. Seed master data
+npm run seed
 ```
 
-To recreate this project with the same configuration:
+## Konfigurasi (.env)
 
-```sh
-# recreate this project
-npx sv@0.16.1 create --template minimal --types ts --add tailwindcss="plugins:none" --no-install .
-```
+| Variabel | Default | Keterangan |
+|---|---|---|
+| `DATABASE_URL` | `file:./dev.db` | Path database SQLite |
+| `OLLAMA_URL` | `http://localhost:11434` | Endpoint Ollama (AI classifier) |
+| `OLLAMA_MODEL` | `llama3.2` | Model Ollama |
+| `WHATSAPP_SOURCE_NAME` | `Grup Support IT` | Nama source WhatsApp dari seed |
 
-## Developing
+## Menjalankan
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+### Dev server
 
-```sh
+```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+# Buka http://localhost:5173
 ```
 
-## Building
+### WhatsApp worker (terminal terpisah)
 
-To create a production version of your app:
+```bash
+npm run worker
+# Scan QR code untuk menghubungkan WhatsApp
+```
 
-```sh
+### Testing
+
+```bash
+npm run test        # sekali
+npm run test:watch  # mode watch
+```
+
+### Type-check
+
+```bash
+npm run check
+```
+
+### Production build
+
+```bash
 npm run build
+npm run preview
 ```
 
-You can preview the production build with `npm run preview`.
+## Struktur Proyek
 
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
+```
+src/
+  lib/server/db/           — PrismaClient singleton
+  lib/server/whatsapp/     — WhatsAppReader interface + WebJS adapter
+  lib/server/classifier/   — Hybrid classifier (rules → Ollama)
+  lib/server/ticket/       — Ticket CRUD
+  lib/server/recap/        — Report generator
+  lib/components/          — UI components (Svelte 5)
+  routes/                  — Halaman + API endpoints
+prisma/
+  schema.prisma            — 11 tabel
+  seed.ts                  — Master data (priorities, statuses, dll)
+worker/index.ts            — WhatsApp listener process
+```
+
+## Catatan
+
+- Database SQLite (dev) bisa diganti ke PostgreSQL via `@prisma/adapter-libsql`
+- WhatsApp worker berjalan terpisah, tidak di SvelteKit
+- Klasifikasi: rule-based dulu, fallback ke Ollama jika confidence < 0.7
+- Semua jam tersimpan di UTC, ditampilkan di `Asia/Jakarta`

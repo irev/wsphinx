@@ -1,14 +1,33 @@
 import { json, type RequestHandler } from "@sveltejs/kit";
+import { z } from "zod";
 import { getDb } from "$lib/server/db/index.js";
 import { classifyMessage } from "$lib/server/classifier/index.js";
 
-export const POST: RequestHandler = async ({ request }) => {
-  const db = getDb();
-  const body = await request.json();
-  const messageId = body.messageId;
+const classifySchema = z.object({
+  messageId: z.string().min(1).optional(),
+  body: z.string().max(10000).optional(),
+  fromName: z.string().max(200).optional(),
+  previousMessages: z.array(z.string().max(500)).max(10).optional(),
+});
 
-  if (messageId) {
-    const msg = await db.whatsAppMessage.findUnique({ where: { id: messageId } });
+export const POST: RequestHandler = async ({ request }) => {
+  let raw: unknown;
+  try {
+    raw = await request.json();
+  } catch {
+    return json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  const parsed = classifySchema.safeParse(raw);
+  if (!parsed.success) {
+    return json({ error: "Validasi gagal", detail: parsed.error.flatten() }, { status: 400 });
+  }
+
+  const body = parsed.data;
+  const db = getDb();
+
+  if (body.messageId) {
+    const msg = await db.whatsAppMessage.findUnique({ where: { id: body.messageId } });
     if (!msg) return json({ error: "Message not found" }, { status: 404 });
 
     const prevMessages = await db.whatsAppMessage.findMany({
@@ -56,8 +75,12 @@ export const POST: RequestHandler = async ({ request }) => {
     return json({ data: result });
   }
 
+  if (!body.body) {
+    return json({ error: "messageId atau body required" }, { status: 400 });
+  }
+
   const result = await classifyMessage({
-    body: body.body || "",
+    body: body.body,
     fromName: body.fromName || "Unknown",
     previousMessages: body.previousMessages || [],
   });

@@ -1,6 +1,10 @@
 <script lang="ts">
+	import { sanitizeForm } from '$lib/utils/sanitize';
+	import { required, validate } from '$lib/utils/validate';
+
 	let categories = $state<any[]>([]);
 	let priorities = $state<any[]>([]);
+	let pics = $state<any[]>([]);
 	let sources = $state<any[]>([]);
 	let loading = $state(true);
 	let submitting = $state(false);
@@ -8,7 +12,7 @@
 
 	let form = $state({
 		title: '', summary: '', reporterName: '', reporterPhone: '',
-		sourceId: '', categoryId: '', priorityId: '',
+		sourceId: '', categoryId: '', priorityId: '', picId: '',
 	});
 
 	$effect(() => {
@@ -19,6 +23,7 @@
 				const d = (await res.json()).data;
 				categories = d.categories || [];
 				priorities = d.priorities || [];
+				pics = d.pics || [];
 				sources = d.sources || [];
 			}
 			loading = false;
@@ -27,9 +32,18 @@
 	});
 
 	async function submit() {
+		const errs = validate({
+			title: [required()],
+			summary: [required()],
+			reporterName: [required()],
+		}, form);
+		if (Object.keys(errs).length) {
+			error = Object.values(errs).join(', ');
+			return;
+		}
 		submitting = true;
 		error = '';
-		const body = {
+		const body = sanitizeForm({
 			title: form.title,
 			summary: form.summary,
 			reporterName: form.reporterName,
@@ -37,8 +51,9 @@
 			sourceId: form.sourceId || undefined,
 			categoryId: form.categoryId || undefined,
 			priorityId: form.priorityId || undefined,
+			picId: form.picId || undefined,
 			messageIds: [],
-		};
+		});
 		const res = await fetch('/api/tickets', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -46,7 +61,7 @@
 		});
 		submitting = false;
 		if (res.ok) {
-			form = { title: '', summary: '', reporterName: '', reporterPhone: '', sourceId: '', categoryId: '', priorityId: '' };
+			form = { title: '', summary: '', reporterName: '', reporterPhone: '', sourceId: '', categoryId: '', priorityId: '', picId: '' };
 			const dismiss = document.querySelector<HTMLElement>('#ticket_form_drawer [data-kt-drawer-dismiss]');
 			dismiss?.click();
 		} else {
@@ -66,7 +81,7 @@
 	<div class="grow overflow-y-auto px-5 py-4">
 		{#if loading}
 			<div class="flex items-center justify-center py-10">
-				<div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+				<div class="kt-spinner-ring size-6"></div>
 			</div>
 		{:else}
 			<form class="flex flex-col gap-4" onsubmit={(e) => { e.preventDefault(); submit(); }}>
@@ -108,14 +123,25 @@
 						</select>
 					</div>
 				</div>
-				<div>
-					<label for="tfd_source" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Sumber WhatsApp</label>
-					<select id="tfd_source" bind:value={form.sourceId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
-						<option value="">Pilih sumber</option>
-						{#each sources as src}
-							<option value={src.id}>{src.name}</option>
-						{/each}
-					</select>
+				<div class="grid grid-cols-2 gap-3">
+					<div>
+						<label for="tfd_pic" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">PIC</label>
+						<select id="tfd_pic" bind:value={form.picId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+							<option value="">Pilih PIC</option>
+							{#each pics as pic}
+								<option value={pic.id}>{pic.name}</option>
+							{/each}
+						</select>
+					</div>
+					<div>
+						<label for="tfd_source" class="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-1 block">Sumber WhatsApp</label>
+						<select id="tfd_source" bind:value={form.sourceId} class="kt-select w-full border border-input rounded-lg px-3 py-2 text-sm">
+							<option value="">Pilih sumber</option>
+							{#each sources as src}
+								<option value={src.id}>{src.name}</option>
+							{/each}
+						</select>
+					</div>
 				</div>
 				{#if error}
 					<div class="text-2sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</div>

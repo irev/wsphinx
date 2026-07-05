@@ -38,6 +38,7 @@ export interface TicketCreateInput {
   sourceId?: string;
   categoryId?: string;
   priorityId?: string;
+  picId?: string;
   messageIds: string[];
 }
 

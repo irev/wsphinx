@@ -13,13 +13,16 @@ export const POST: RequestHandler = async ({ params, request }) => {
   const ticket = await db.supportTicket.findUnique({ where: { id: params.id } });
   if (!ticket) return json({ error: "Ticket not found" }, { status: 404 });
 
+  const data: Record<string, any> = {
+    statusId: closedStatus.id,
+    closedAt: new Date(),
+    closedReason: reason || null,
+  };
+  if (!ticket.resolvedAt) data.resolvedAt = new Date();
+
   const updated = await db.supportTicket.update({
     where: { id: params.id },
-    data: {
-      statusId: closedStatus.id,
-      closedAt: new Date(),
-      closedReason: reason || null,
-    },
+    data,
     include: { status: true, priority: true, category: true, pic: true },
   });
 

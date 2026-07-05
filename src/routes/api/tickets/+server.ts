@@ -11,6 +11,7 @@ const createSchema = z.object({
   sourceId: z.string().optional(),
   categoryId: z.string().optional(),
   priorityId: z.string().optional(),
+  picId: z.string().optional(),
   messageIds: z.array(z.string()).default([]),
 });
 

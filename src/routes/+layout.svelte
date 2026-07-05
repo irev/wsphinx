@@ -3,13 +3,20 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { afterNavigate } from '$app/navigation';
-	import Sidebar from '$lib/components/Sidebar.svelte';
 	import Header from '$lib/components/Header.svelte';
+	import Navbar from '$lib/components/Navbar.svelte';
 	import TicketFormDrawer from '$lib/components/TicketFormDrawer.svelte';
+	import Toast from '$lib/components/Toast.svelte';
+	import NotificationsDrawer from '$lib/components/NotificationsDrawer.svelte';
+	import ScrollToTop from '$lib/components/ScrollToTop.svelte';
 
 	let { children } = $props();
 
 	onMount(() => {
+		document.body.classList.add(
+			'antialiased', 'flex', 'h-full', 'text-base', 'text-foreground', 'bg-background'
+		);
+
 		function loadScript(src: string) {
 			return new Promise<void>((resolve, reject) => {
 				const s = document.createElement('script');
@@ -54,29 +61,26 @@
 	<title>WhatsApp Tech Support</title>
 </svelte:head>
 
-<div class="flex grow flex-col in-data-kt-[sticky-header=on]:pt-(--header-height)">
+<div class="flex grow flex-col in-data-[kt-sticky-header=on]:pt-(--header-height)">
 	<Header {currentPage} />
+	<Navbar />
 
-	<div class="flex grow lg:flex-row flex-col">
-		<Sidebar />
-
+	<div class="w-full flex px-0">
 		<main class="flex flex-col grow" id="content">
-			<div class="mb-5 lg:mb-7.5">
-				<div class="kt-container-fluid flex items-center justify-between flex-wrap gap-5">
-					<div class="flex items-center flex-wrap gap-1 lg:gap-5">
-						<h1 class="font-medium text-lg text-mono">{currentPage || 'Dashboard'}</h1>
-					</div>
+			<div class="mb-3 lg:mb-4">
+				<div class="kt-container-fixed flex items-center justify-between flex-wrap gap-3">
+					<h1 class="font-medium text-base text-mono">{currentPage || 'Dashboard'}</h1>
 				</div>
 			</div>
 
-			<div class="kt-container-fluid">
-				<div class="grid gap-5 lg:gap-7.5">
+			<div class="kt-container-fixed">
+				<div class="flex flex-col gap-5 lg:gap-7.5">
 					{@render children()}
 				</div>
 			</div>
 
-			<footer class="footer mt-auto">
-				<div class="kt-container-fluid">
+			<footer class="mt-auto">
+				<div class="kt-container-fixed">
 					<div class="flex flex-col md:flex-row justify-center md:justify-between items-center gap-3 py-5">
 						<div class="flex order-2 md:order-1 gap-2 font-normal text-sm">
 							<span class="text-muted-foreground">{new Date().getFullYear()}&copy;</span>
@@ -96,35 +100,12 @@
 </div>
 
 <TicketFormDrawer />
-
-<div class="hidden kt-drawer kt-drawer-end card flex-col max-w-[90%] w-[450px] top-5 bottom-5 end-5 rounded-xl border border-border" data-kt-drawer="true" data-kt-drawer-container="body" id="notifications_drawer">
-	<div class="flex items-center justify-between gap-2.5 text-sm text-mono font-semibold px-5 py-2.5 border-b border-b-border">
-		Notifications
-		<button class="kt-btn kt-btn-sm kt-btn-icon kt-btn-dim shrink-0" data-kt-drawer-dismiss="true" aria-label="Tutup notifikasi">
-			<i class="ki-filled ki-cross"></i>
-		</button>
-	</div>
-	<div class="flex items-center gap-1.5 px-5 pt-3 pb-2 border-b border-border">
-		<button class="kt-btn kt-btn-sm rounded-full">All</button>
-		<button class="kt-btn kt-btn-sm kt-btn-soft rounded-full text-muted-foreground">Pesan</button>
-		<button class="kt-btn kt-btn-sm kt-btn-soft rounded-full text-muted-foreground">Tiket</button>
-		<button class="kt-btn kt-btn-sm kt-btn-soft rounded-full text-muted-foreground">Sistem</button>
-	</div>
-	<div class="grow flex flex-col items-center justify-center text-center px-5">
-		<div class="flex items-center justify-center size-16 rounded-full bg-primary/10 mb-3">
-			<i class="ki-filled ki-notification-status text-2xl text-primary"></i>
-		</div>
-		<p class="text-sm font-medium text-foreground">Belum ada notifikasi</p>
-		<p class="text-2sm text-muted-foreground mt-1">Notifikasi akan muncul saat ada pesan atau tiket baru</p>
-	</div>
-</div>
+<Toast />
+<NotificationsDrawer />
+<ScrollToTop />
 
 <style>
-	/* Override Metronic CSS for Svelte-controlled dropdowns & accordions */
-	:global(.kt-menu-item.kt-menu-item-show > .kt-menu-dropdown) {
-		display: flex !important;
-	}
-	:global(.kt-menu-item.kt-menu-item-show > .kt-menu-accordion) {
-		display: flex !important;
+	:global(.kt-menu-item.show.kt-menu-item-dropdown > .kt-menu-dropdown) {
+		display: flex;
 	}
 </style>

@@ -100,7 +100,7 @@
 {/if}
 
 {#if loading}
-	<div class="flex items-center justify-center py-10"><div class="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div>
+	<div class="flex items-center justify-center py-10"><div class="kt-spinner-ring size-6"></div></div>
 {:else}
 	<div class="kt-card border border-border rounded-xl shadow-sm bg-card">
 		<div class="kt-card-header">
@@ -111,9 +111,9 @@
 		</div>
 		{#if reports.length === 0}
 			<div class="kt-card-body">
-				<div class="flex flex-col items-center py-8 text-center">
-					<i class="ki-filled ki-chart-simple text-3xl text-muted-foreground/30 mb-2"></i>
-					<p class="text-sm text-muted-foreground">Belum ada laporan tersimpan</p>
+				<div class="kt-empty">
+					<i class="ki-filled ki-chart-simple kt-empty-icon text-3xl"></i>
+					<p class="kt-empty-text">Belum ada laporan tersimpan</p>
 				</div>
 			</div>
 		{:else}

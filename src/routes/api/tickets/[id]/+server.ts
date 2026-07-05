@@ -17,7 +17,17 @@ export const GET: RequestHandler = async ({ params }) => {
     },
   });
   if (!ticket) return json({ error: "Ticket not found" }, { status: 404 });
-  return json({ data: ticket });
+
+  const statuses = await db.supportStatus.findMany();
+  const statusMap = Object.fromEntries(statuses.map((s: any) => [s.id, s.name]));
+
+  const updates = ticket.updates.map((u: any) => ({
+    ...u,
+    fromStatus: u.fromStatus ? statusMap[u.fromStatus] || u.fromStatus : null,
+    toStatus: u.toStatus ? statusMap[u.toStatus] || u.toStatus : null,
+  }));
+
+  return json({ data: { ...ticket, updates } });
 };
 
 export const PUT: RequestHandler = async ({ params, request }) => {

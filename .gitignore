@@ -29,9 +29,13 @@ vite.config.ts.timestamp-*
 *.db
 *.db-journal
 
+# Media storage
+/media
+
 # WhatsApp session
 .session-data/
 *.session-data/
+.whatsapp-status.json
 
 # Editor
 .vscode/
@@ -39,3 +43,26 @@ vite.config.ts.timestamp-*
 # Logs
 *.log
 npm-debug.log*
+
+# Playwright CLI artifacts
+.playwright-cli/
+
+# WhatsApp web.js cache
+.wwebjs_cache/
+
+# Screenshots & Playwright snapshots
+*.png
+inbox-page.yaml
+scrolled.yaml
+scrolled2.yaml
+sources-snapshot.yaml
+sources-v2.png
+sources-page-final.png
+sources-page.png
+sources-width-fix.png
+
+# Temp docs
+BUG.md
+FITUR.md
+/docs
+/evaluations

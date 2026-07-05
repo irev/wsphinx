@@ -27,8 +27,12 @@ model WhatsAppSource {
   name        String
   type        String   // group, contact, broadcast
   phone       String
+  chatId      String?  // WhatsApp internal group/chat ID (e.g., 1234567890@g.us)
   active      Boolean  @default(true)
+  autoReply   Boolean  @default(false)
+  replyTemplate String?
   description String?
+  photoPath   String?  // base64 cached profile photo
   config      String?  // JSON config for adapter
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -40,11 +44,18 @@ model WhatsAppSource {
 model WhatsAppMessage {
   id              String   @id @default(cuid())
   sourceId        String
+  chatId          String?  // WhatsApp internal chat/group ID
+  chatName        String?  // Human-readable group name
   fromPhone       String
   fromName        String?
   body            String
+  mediaPath       String?  // "sourceId/abc123.jpg"
+  mediaType       String?  // "image/jpeg", "video/mp4"
+  mediaSize       Int?     // bytes
+  fileName        String?  // original filename (documents)
   timestamp       DateTime
   rawData         String?  // Original JSON from adapter
+  isRead          Boolean  @default(false)
   isSupportRelated Boolean @default(false)
   messageType     String?  // new_issue, update, confirmation, info_request, escalation, noise, general_chat
   category        String?
@@ -54,6 +65,7 @@ model WhatsAppMessage {
   uncertainty     String?  // JSON array
   summary         String?
   isProcessed     Boolean  @default(false)
+  isActive        Boolean  @default(true)
   createdAt       DateTime @default(now())
 
   source  WhatsAppSource   @relation(fields: [sourceId], references: [id])

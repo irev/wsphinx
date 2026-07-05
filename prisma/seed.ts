@@ -38,8 +38,8 @@ async function main() {
 
   const pics = await Promise.all([
     prisma.user.upsert({ where: { phone: "6281111111111" }, update: {}, create: { name: "PIC Satu", phone: "6281111111111", role: "pic", email: "pic.satu@company.com" } }),
-    prisma.user.upsert({ where: { phone: "6281111111111" }, update: {}, create: { name: "PIC Dua", phone: "6281111111111", role: "pic", email: "pic.dua@company.com" } }),
-    prisma.user.upsert({ where: { phone: "6281111111111" }, update: {}, create: { name: "Admin System", phone: "6281111111111", role: "admin", email: "admin@company.com" } }),
+    prisma.user.upsert({ where: { phone: "6281111111112" }, update: {}, create: { name: "PIC Dua", phone: "6281111111112", role: "pic", email: "pic.dua@company.com" } }),
+    prisma.user.upsert({ where: { phone: "6281111111113" }, update: {}, create: { name: "Admin System", phone: "6281111111113", role: "admin", email: "admin@company.com" } }),
   ]);
 
   let source = await prisma.whatsAppSource.findFirst();

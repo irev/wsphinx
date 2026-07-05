@@ -50,6 +50,7 @@ export async function createTicket(input: TicketCreateInput) {
       sourceId: input.sourceId,
       categoryId: input.categoryId,
       priorityId: input.priorityId,
+      picId: input.picId,
       statusId: defaultStatus.id,
     },
   });
@@ -86,11 +87,21 @@ export async function updateTicket(ticketId: string, input: TicketUpdateInput, u
   if (!ticket) throw new Error("Ticket not found");
 
   const detail: Record<string, { from: string | null; to: string | null }> = {};
-  const data: Record<string, string | null> = {};
+  const data: Record<string, any> = {};
 
   if (input.statusId && input.statusId !== ticket.statusId) {
     detail.status = { from: ticket.statusId, to: input.statusId };
     data.statusId = input.statusId;
+
+    const resolvedStatus = await db.supportStatus.findFirst({ where: { name: "Resolved" } });
+    if (resolvedStatus && input.statusId === resolvedStatus.id) {
+      data.resolvedAt = new Date();
+    }
+
+    const closedStatus = await db.supportStatus.findFirst({ where: { name: "Closed" } });
+    if (closedStatus && input.statusId === closedStatus.id) {
+      data.closedAt = new Date();
+    }
 
     await db.supportTicketUpdate.create({
       data: {
@@ -127,24 +138,4 @@ export async function updateTicket(ticketId: string, input: TicketUpdateInput, u
   return updated;
 }
 
-export async function closeTicket(ticketId: string, reason?: string, userId?: string) {
-  const db = getDb();
-  const closedStatus = await db.supportStatus.findFirst({
-    where: { name: "Closed" },
-  });
-  if (!closedStatus) throw new Error("Status 'Closed' not found");
 
-  const resolvedStatus = await db.supportStatus.findFirst({
-    where: { name: "Resolved" },
-  });
-
-  return updateTicket(
-    ticketId,
-    {
-      statusId: closedStatus.id,
-      notes: reason,
-      note: reason,
-    },
-    userId
-  );
-}
