@@ -195,7 +195,12 @@
 			const res = await fetch('/api/whatsapp/status');
 			if (res.ok) {
 				const d = await res.json();
-				waStatus = { status: d.status || 'worker_offline', qrCode: d.qrCode || null };
+				const nextStatus = d.status || 'worker_offline';
+				const prevStatus = waStatus.status;
+				waStatus = { status: nextStatus, qrCode: d.qrCode || null };
+				if (nextStatus === 'scanning_qr' && prevStatus !== 'scanning_qr') {
+					fetchWaQr();
+				}
 			} else {
 				waStatus = { status: 'worker_offline', qrCode: null };
 			}
@@ -823,7 +828,7 @@
 					{#if waStatus.status === 'scanning_qr'}
 						<div class="flex justify-center py-2">
 							{#if waQrImage}
-								<img src={waQrImage} alt="QR Code" class="size-48 border border-border rounded-xl" />
+								<img src={waQrImage} alt="QR Code" class="size-56 border border-border rounded-xl" />
 								<p class="text-2xs text-muted-foreground text-center mt-1">QR expired dalam ~20 detik, auto-refresh tiap 15 detik</p>
 							{:else}
 								<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>

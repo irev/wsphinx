@@ -320,3 +320,6 @@ textarea.kt-input {
 /* ── Background colors (not in precompiled styles.css) ── */
 .bg-info { background-color: var(--color-violet-500); }
 .bg-info\/10 { background-color: color-mix(in srgb, var(--color-violet-500) 10%, transparent); }
+
+/* ── Sizing utilities (not in precompiled styles.css) ── */
+.size-56 { width: 14rem; height: 14rem; }
