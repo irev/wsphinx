@@ -6,8 +6,17 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 
 ## Unreleased
 
-### Added
-- **Session persistence** — `getSessionInfo()` dan `clearSession()` di `WhatsAppReader` interface & `WebJSAdapter`; worker endpoint `GET /api/session/info` dan `POST /api/session/clear`; proxy SvelteKit
+### Fixed
+- Settings → Connection card: `waDisconnect`, `waDisconnectAndClear`, `waReconnect` — refresh API calls (status + session info) sebelum loading spinner dimatikan
+- `fetchWaQr()` hanya dipanggil di mount jika status sudah `scanning_qr`, bukan unconditional
+- Semua fetch connection ada timeout 5s via `AbortController` (cek worker mati tidak hang selamanya)
+- Validasi shape `waHealth` response sebelum assign — cegah NaN dari field tak terduga
+- Guard NaN: `waHealth.uptime ?? 0`, `waHealth.reconnectAttempts ?? 0`, `waHealth.maxReconnectAttempts ?? 10`
+- QR error state + tombol retry saat fetch QR gagal (tidak spinner abadi)
+- Toast error saat health check gagal
+- `showToast('warning', ...)` diperbaiki jadi `'info'` (tidak ada tipe warning di ToastType)
+
+
 - **Session UI** di Settings → Connection: status saved session (Available/None), created date, file size; toggle Session Persistence; tombol Clear Session dengan konfirmasi
 - **Auto-clear session**: saat `wa_session_persistence = false`, session otomatis dihapus saat disconnect
 - Seed: `wa_session_persistence = true`
