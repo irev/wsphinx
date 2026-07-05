@@ -180,8 +180,9 @@
 		return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id));
 	}
 
+	import { waStatus, refreshNow } from '$lib/stores/wa-status.svelte';
+
 	// ── WA Connection ──
-	let waStatus = $state<{ status: string; qrCode: string | null }>({ status: 'loading', qrCode: null });
 	let waHealth = $state<{ worker: string; status: string; latency: number | null; uptime: number; reconnectAttempts: number; maxReconnectAttempts: number } | null>(null);
 	let waHealthTimestamp = $state<number | null>(null);
 	let waHealthLoading = $state(false);
@@ -192,29 +193,10 @@
 	let waSessionLoading = $state(false);
 	let waClearConfirm = $state(false);
 	let waLogoutConfirm = $state(false);
-	let waStatusInterval: ReturnType<typeof setInterval> | undefined;
+	let waPrevStatus = $state<string>('loading');
 	let waQrInterval: ReturnType<typeof setInterval> | undefined;
 
 	function isStatusInitializing(s: string) { return s === 'initializing'; }
-
-	async function fetchWaStatus() {
-		try {
-			const res = await fetch('/api/whatsapp/status');
-			if (res.ok) {
-				const d = await res.json();
-				const nextStatus = d.status || 'worker_offline';
-				const prevStatus = waStatus.status;
-				waStatus = { status: nextStatus, qrCode: d.qrCode || null };
-				if (nextStatus === 'scanning_qr' && prevStatus !== 'scanning_qr') {
-					fetchWaQr();
-				}
-			} else {
-				waStatus = { status: 'worker_offline', qrCode: null };
-			}
-		} catch {
-			waStatus = { status: 'worker_offline', qrCode: null };
-		}
-	}
 
 	let waQrError = $state(false);
 
@@ -267,7 +249,8 @@
 		} catch {
 			showToast('error', 'Worker unreachable');
 		}
-		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
+		refreshNow();
+		await fetchSessionInfo();
 		waDisconnectLoading = false;
 	}
 
@@ -284,7 +267,8 @@
 			showToast('error', 'Worker unreachable');
 		}
 		waLogoutConfirm = false;
-		await Promise.all([fetchWaStatus(), fetchSessionInfo()]);
+		refreshNow();
+		await fetchSessionInfo();
 		waDisconnectLoading = false;
 	}
 
@@ -325,7 +309,8 @@
 			if (res.ok) {
 				showToast('success', 'Session cleared. Scan QR again to login.');
 				waSessionInfo = { exists: false, createdAt: null, size: null };
-				waStatus = { status: 'disconnected', qrCode: null };
+				waStatus.status = 'disconnected';
+				waStatus.qrCode = null;
 			} else showToast('error', 'Gagal clear session');
 		} catch {
 			showToast('error', 'Worker unreachable');
@@ -336,18 +321,25 @@
 
 	$effect(() => {
 		if (activeMenu === 'wa-connection') {
-			fetchWaStatus();
+			refreshNow();
 			if (waStatus.status === 'scanning_qr') fetchWaQr();
 			fetchSessionInfo();
-			waStatusInterval = setInterval(fetchWaStatus, 3000);
 			waQrInterval = setInterval(() => {
 				if (waStatus.status === 'scanning_qr') fetchWaQr();
 			}, 15000);
 			return () => {
-				if (waStatusInterval) clearInterval(waStatusInterval);
 				if (waQrInterval) clearInterval(waQrInterval);
 			};
 		}
+	});
+
+	$effect(() => {
+		if (activeMenu !== 'wa-connection') return;
+		const current = waStatus.status;
+		if (current === 'scanning_qr' && waPrevStatus !== 'scanning_qr') {
+			fetchWaQr();
+		}
+		waPrevStatus = current;
 	});
 
 	function formatDuration(seconds: number): string {
@@ -819,7 +811,7 @@
 	{:else if activeMenu === 'wa-connection'}
 		<Card title="WhatsApp Connection">
 			{#snippet headerActions()}
-				<button onclick={fetchWaStatus} class="kt-btn kt-btn-sm kt-btn-ghost" aria-label="Refresh status">
+				<button onclick={refreshNow} class="kt-btn kt-btn-sm kt-btn-ghost" aria-label="Refresh status">
 					<i class="ki-filled ki-arrows-loop text-sm"></i>
 				</button>
 			{/snippet}

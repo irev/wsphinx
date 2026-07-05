@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { waStatus } from '$lib/stores/wa-status.svelte';
 
 	let { currentPage = '' } = $props();
 
-	let waStatus = $state<string>('unknown');
 	let unreadCount = $state(0);
 
 	async function checkUnread() {
@@ -26,7 +26,7 @@
 		if (s === 'connected') return 'bg-success';
 		if (s === 'scanning_qr' || s === 'reconnecting') return 'bg-warning';
 		if (s === 'expired') return 'bg-destructive';
-		if (s === 'worker_offline') return 'bg-destructive';
+		if (s === 'worker_offline' || s === 'loading') return 'bg-destructive';
 		if (s === 'initializing') return 'bg-warning';
 		return 'bg-muted-foreground/30';
 	}
@@ -40,21 +40,10 @@
 			disconnected: 'Terputus',
 			initializing: 'Menghubungkan ke WhatsApp...',
 			worker_offline: 'Worker tidak berjalan',
+			loading: 'Memuat status...',
 		};
 		return m[s] || 'Worker tidak berjalan';
 	}
-
-	onMount(() => {
-		const fn = async () => {
-			try {
-				const res = await fetch('/api/whatsapp/status');
-				if (res.ok) waStatus = (await res.json()).status || 'unknown';
-			} catch {}
-		};
-		fn();
-		const interval = setInterval(fn, 10000);
-		return () => clearInterval(interval);
-	});
 </script>
 
 <header
@@ -92,11 +81,11 @@
 						</span>
 					{/if}
 				</button>
-				<div class="flex items-center gap-2 ps-2 lg:ps-4 border-s border-border" title={statusTitle(waStatus)}>
+				<div class="flex items-center gap-2 ps-2 lg:ps-4 border-s border-border" title={statusTitle(waStatus.status)}>
 				<div class="kt-avatar-image size-[34px] rounded-full bg-primary flex items-center justify-center text-white text-xs font-semibold">R</div>
 				<div class="hidden lg:flex flex-col">
 					<span class="text-sm font-medium text-foreground leading-none flex items-center gap-1.5">
-						<span class="size-2 rounded-full {statusColor(waStatus)} {waStatus === 'connected' ? 'animate-ping' : ''}"></span>
+						<span class="size-2 rounded-full {statusColor(waStatus.status)} {waStatus.status === 'connected' ? 'animate-ping' : ''}"></span>
 						PIC Satu
 					</span>
 						<span class="text-2xs font-normal text-muted-foreground mt-0.5">Teknisi</span>
