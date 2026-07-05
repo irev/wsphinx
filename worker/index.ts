@@ -194,6 +194,13 @@ async function main() {
         const state = adapter.getStatus();
         writeStatus(state.status, state.qrCode);
         res.end(JSON.stringify({ data: { status: state.status, qrCode: state.qrCode } }));
+      } else if (req.method === "GET" && path === "/api/session/info") {
+        const info = adapter.getSessionInfo();
+        res.end(JSON.stringify({ data: info }));
+      } else if (req.method === "POST" && path === "/api/session/clear") {
+        await adapter.clearSession();
+        const state = adapter.getStatus();
+        res.end(JSON.stringify({ data: { status: state.status } }));
       } else if (req.method === "GET" && path === "/api/health") {
         const state = adapter.getStatus();
         const info = adapter.getReconnectInfo();

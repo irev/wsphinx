@@ -418,6 +418,15 @@ export class WebJSAdapter implements WhatsAppReader {
     await this.client.destroy();
     this.status = "disconnected";
     this.emitStatus({ status: "disconnected" });
+    // Auto-clear session if persistence is disabled
+    try {
+      const db = getDb();
+      const setting = await db.appSetting.findUnique({ where: { key: "wa_session_persistence" } });
+      if (setting && setting.value === "false") {
+        await this.clearSession();
+        console.log("[WA] Session auto-cleared because persistence is disabled.");
+      }
+    } catch {}
   }
 
   async restart() {
@@ -523,6 +532,36 @@ export class WebJSAdapter implements WhatsAppReader {
 
   getReconnectInfo() {
     return { reconnectAttempts: this.reconnectAttempts, maxReconnectAttempts: this.maxReconnectAttempts };
+  }
+
+  getSessionInfo() {
+    const sessionDir = path.join(".session-data", `session-${this.sourceId}`);
+    try {
+      if (fs.existsSync(sessionDir)) {
+        const stat = fs.statSync(sessionDir);
+        return { exists: true, createdAt: stat.birthtime.toISOString(), size: stat.size };
+      }
+      return { exists: false, createdAt: null, size: null };
+    } catch {
+      return { exists: false, createdAt: null, size: null };
+    }
+  }
+
+  async clearSession() {
+    const sessionDir = path.join(".session-data", `session-${this.sourceId}`);
+    try {
+      if (fs.existsSync(sessionDir)) {
+        if (this.status === "connected" || this.status === "scanning_qr") {
+          await this.client.destroy().catch(() => {});
+        }
+        fs.rmSync(sessionDir, { recursive: true, force: true });
+        this.status = "disconnected";
+        this.qrCode = undefined;
+        this.emitStatus({ status: "disconnected" });
+      }
+    } catch (e) {
+      console.error("[WA] Gagal hapus session:", e);
+    }
   }
 
   onMessage(handler: MessageHandler) {

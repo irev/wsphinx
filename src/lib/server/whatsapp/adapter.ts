@@ -65,4 +65,6 @@ export interface WhatsAppReader {
   onMessage(handler: MessageHandler): void;
   onStatusChange(handler: StatusChangeHandler): void;
   sendMessage(chatId: string, text: string): Promise<void>;
+  getSessionInfo(): { exists: boolean; createdAt: string | null; size: number | null };
+  clearSession(): Promise<void>;
 }

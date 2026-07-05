@@ -179,6 +179,9 @@
 	let waHealthLoading = $state(false);
 	let waQrImage = $state<string | null>(null);
 	let waActionLoading = $state(false);
+	let waSessionInfo = $state<{ exists: boolean; createdAt: string | null; size: number | null }>({ exists: false, createdAt: null, size: null });
+	let waSessionLoading = $state(false);
+	let waClearConfirm = $state(false);
 	let waStatusInterval: ReturnType<typeof setInterval> | undefined;
 
 	async function fetchWaStatus() {
@@ -249,10 +252,41 @@
 		waActionLoading = false;
 	}
 
+	async function fetchSessionInfo() {
+		try {
+			const res = await fetch('/api/whatsapp/session/info');
+			if (res.ok) {
+				const d = await res.json();
+				waSessionInfo = { exists: d.exists || false, createdAt: d.createdAt || null, size: d.size || null };
+			} else {
+				waSessionInfo = { exists: false, createdAt: null, size: null };
+			}
+		} catch {
+			waSessionInfo = { exists: false, createdAt: null, size: null };
+		}
+	}
+
+	async function waClearSession() {
+		waSessionLoading = true;
+		try {
+			const res = await fetch('/api/whatsapp/session/clear', { method: 'POST' });
+			if (res.ok) {
+				showToast('success', 'Session cleared. Scan QR again to login.');
+				waSessionInfo = { exists: false, createdAt: null, size: null };
+				waStatus = { status: 'disconnected', qrCode: null };
+			} else showToast('error', 'Gagal clear session');
+		} catch {
+			showToast('error', 'Worker unreachable');
+		}
+		waSessionLoading = false;
+		waClearConfirm = false;
+	}
+
 	$effect(() => {
 		if (activeMenu === 'wa-connection') {
 			fetchWaStatus();
 			fetchWaQr();
+			fetchSessionInfo();
 			waStatusInterval = setInterval(fetchWaStatus, 3000);
 			return () => { if (waStatusInterval) clearInterval(waStatusInterval); };
 		}
@@ -291,7 +325,7 @@
 	}
 
 	$effect(() => {
-		if (activeMenu === 'wa-autoreply' || activeMenu === 'wa-processing') loadWaSettings();
+		if (activeMenu === 'wa-connection' || activeMenu === 'wa-autoreply' || activeMenu === 'wa-processing') loadWaSettings();
 	});
 
 	function entityStateRef(entity: string) {
@@ -769,6 +803,38 @@
 						</div>
 					</div>
 
+					<!-- Session Persistence Toggle -->
+					{#if !waSettingsLoading}
+						<label class="flex items-center gap-3 cursor-pointer rounded-lg bg-muted/30 p-3">
+							<input type="checkbox" checked={waSettings.wa_session_persistence !== 'false'} onchange={() => saveWaSetting('wa_session_persistence', waSettings.wa_session_persistence === 'false' ? 'true' : 'false')} class="kt-switch" />
+							<div>
+								<span class="text-sm font-medium text-foreground">Session Persistence</span>
+								<p class="text-xs text-muted-foreground">Simpan sesi login agar tidak perlu scan QR ulang saat restart</p>
+							</div>
+						</label>
+					{/if}
+
+					<!-- Session Info -->
+					<div class="rounded-lg bg-muted/30 p-3 text-xs space-y-1.5">
+						<div class="flex items-center justify-between">
+							<span class="text-muted-foreground">Saved Session</span>
+							<span class="inline-flex items-center gap-1.5 font-medium {waSessionInfo.exists ? 'text-success' : 'text-muted-foreground'}">
+								<span class="inline-block size-2 rounded-full {waSessionInfo.exists ? 'bg-success' : 'bg-muted-foreground'}"></span>
+								{waSessionInfo.exists ? 'Available' : 'None'}
+							</span>
+						</div>
+						{#if waSessionInfo.exists}
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Created</span>
+								<span class="font-medium text-foreground">{waSessionInfo.createdAt ? new Date(waSessionInfo.createdAt).toLocaleString('id-ID') : '—'}</span>
+							</div>
+							<div class="flex justify-between">
+								<span class="text-muted-foreground">Size</span>
+								<span class="font-medium text-foreground">{waSessionInfo.size ? (waSessionInfo.size / 1024).toFixed(1) + ' KB' : '—'}</span>
+							</div>
+						{/if}
+					</div>
+
 					<div class="flex flex-wrap gap-2 pt-1">
 						<button onclick={checkWaHealth} disabled={waHealthLoading} class="kt-btn kt-btn-sm kt-btn-outline">
 							{#if waHealthLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
@@ -784,6 +850,20 @@
 							<i class="ki-filled ki-power text-sm"></i>
 							Logout
 						</button>
+						{#if waSessionInfo.exists}
+							{#if waClearConfirm}
+								<div class="flex items-center gap-1.5 w-full pt-1">
+									<span class="text-xs text-destructive font-medium">Clear session?</span>
+									<button onclick={waClearSession} disabled={waSessionLoading} class="kt-btn kt-btn-xs kt-btn-danger">Yes, Clear</button>
+									<button onclick={() => waClearConfirm = false} class="kt-btn kt-btn-xs kt-btn-ghost">Cancel</button>
+								</div>
+							{:else}
+								<button onclick={() => waClearConfirm = true} class="kt-btn kt-btn-sm kt-btn-ghost text-destructive">
+									<i class="ki-filled ki-trash text-sm"></i>
+									Clear Session
+								</button>
+							{/if}
+						{/if}
 					</div>
 
 					{#if waHealth}

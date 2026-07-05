@@ -62,6 +62,7 @@ async function main() {
     prisma.appSetting.upsert({ where: { key: "wa_auto_reply_global" }, update: {}, create: { key: "wa_auto_reply_global", value: "true" } }),
     prisma.appSetting.upsert({ where: { key: "wa_ignore_keywords" }, update: {}, create: { key: "wa_ignore_keywords", value: "spam,promo,info,testing" } }),
     prisma.appSetting.upsert({ where: { key: "wa_business_hours" }, update: {}, create: { key: "wa_business_hours", value: '{"monday":{"start":"08:00","end":"17:00"},"tuesday":{"start":"08:00","end":"17:00"},"wednesday":{"start":"08:00","end":"17:00"},"thursday":{"start":"08:00","end":"17:00"},"friday":{"start":"08:00","end":"17:00"},"saturday":{"start":"08:00","end":"12:00"}}' } }),
+    prisma.appSetting.upsert({ where: { key: "wa_session_persistence" }, update: {}, create: { key: "wa_session_persistence", value: "true" } }),
   ]);
 
   console.log("Seed completed (idempotent)");
