@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+- Dashboard: WhatsApp Stats Card — menampilkan statistik pesan masuk hari ini (jumlah pesan, terklasifikasi, support, tiket dibuat, unprocessed, avg confidence) dari `/api/whatsapp/stats`
+- Security: auto-mask phone number di semua API response JSON via hooks (`maskHandle`)
+- Security: auto-sanitize input di semua POST/PUT/PATCH request JSON via hooks (`sanitizeHandle`)
+- Worker: QR code auto-cleanup 30 detik jika tidak ter-scan
+- Prisma seed: `SEED_PHONE_PIC`, `SEED_PHONE_PIC2`, `SEED_PHONE_ADMIN`, `WHATSAPP_PHONE` env vars untuk konfigurasi nomor tanpa hardcode
+
+### Changed
+- Priorities & statuses PUT endpoint: support `active` field untuk soft-delete reactivate
+- Security headers: CSP diterapkan di semua environment (tidak hanya production), tambah `permissions-policy`, `cross-origin-opener-policy`, `cross-origin-resource-policy`, `x-permitted-cross-domain-policies`
+
 ### Fixed
 - Audit hardcoded values penyebab inkonsistensi:
   - `settings/+page.svelte` — placeholder port `3457` → `9494`
