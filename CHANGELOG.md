@@ -22,7 +22,8 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 - Seed: `wa_session_persistence = true`
 
 ### Changed
-- Settings → Connection: load `waSettings` juga untuk session persistence toggle
+- **WA status store**: semua indikator status WhatsApp di UI (header profile + settings card + sidebar dot) sekarang membaca dari `$lib/stores/wa-status.svelte.ts` — satu sumber kebenaran, polling 5 detik. Settings tidak lagi polling sendiri 3 detik.
+- Settings → Connection: QR fetch otomatis saat status berubah ke `scanning_qr` via `$effect` transition detection
 - `$effect` settings: include `wa-connection` untuk load app settings
 - **State machine adapter**: tambah flag `disconnecting` + `connecting` untuk cegah race condition `restart()` vs `disconnect()`
 - **Label tombol**: "Logout" → "Disconnect" (hanya putus koneksi, session tetap). Logout asli (clear session) pindah ke tombol merah terpisah dengan konfirmasi
