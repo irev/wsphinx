@@ -113,11 +113,20 @@
 			}
 		}
 
+		function toDate(v: unknown): Date | null {
+			if (!v) return null;
+			if (v instanceof Date) return v;
+			const d = new Date(v as string);
+			return isNaN(d.getTime()) ? null : d;
+		}
+
 		items.sort((a, b) => {
-			if (a.timestamp && b.timestamp) return b.timestamp.getTime() - a.timestamp.getTime();
-			if (a.timestamp) return -1;
-			if (b.timestamp) return 1;
-			return a.name.localeCompare(b.name);
+			const ta = toDate(a.timestamp);
+			const tb = toDate(b.timestamp);
+			if (ta && tb) return tb.getTime() - ta.getTime();
+			if (ta) return -1;
+			if (tb) return 1;
+			return (a.name || '').localeCompare(b.name || '');
 		});
 
 		return items;
