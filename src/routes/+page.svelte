@@ -5,18 +5,21 @@
 
 	let tickets = $state<any[]>([]);
 	let settings = $state<any>(null);
+	let stats = $state<any>(null);
 	let loading = $state(true);
 	let waQrImage = $state<string | null>(null);
 	let waQrError = $state(false);
 
 	async function loadData() {
 		loading = true;
-		const [ticketRes, settingsRes] = await Promise.all([
+		const [ticketRes, settingsRes, statsRes] = await Promise.all([
 			fetch('/api/tickets?limit=100'),
 			fetch('/api/settings'),
+			fetch('/api/whatsapp/stats'),
 		]);
 		if (ticketRes.ok) tickets = (await ticketRes.json()).data || [];
 		if (settingsRes.ok) settings = (await settingsRes.json()).data;
+		if (statsRes.ok) stats = (await statsRes.json()).data;
 		loading = false;
 	}
 
@@ -157,6 +160,37 @@
 					</li>
 				</ol>
 				<a href="/settings" class="kt-btn kt-btn-primary mt-5">Buka Settings →</a>
+			</div>
+		</Card>
+	{/if}
+
+	{#if stats}
+		<Card title="WhatsApp Hari Ini" subtitle="Statistik pesan masuk hari ini">
+			<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono">{stats.today.messages}</span>
+					<span class="text-2xs text-muted-foreground text-center">Pesan Masuk</span>
+				</div>
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono">{stats.today.classified}</span>
+					<span class="text-2xs text-muted-foreground text-center">Terklasifikasi</span>
+				</div>
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono text-warning">{stats.today.supportRelated}</span>
+					<span class="text-2xs text-muted-foreground text-center">Support</span>
+				</div>
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono text-primary">{stats.today.ticketsCreated}</span>
+					<span class="text-2xs text-muted-foreground text-center">Tiket Dibuat</span>
+				</div>
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono">{stats.unprocessed}</span>
+					<span class="text-2xs text-muted-foreground text-center">Belum Diproses</span>
+				</div>
+				<div class="flex flex-col items-center gap-1 p-3 rounded-lg bg-muted/40">
+					<span class="text-2xl font-semibold text-mono">{stats.avgConfidence != null ? (stats.avgConfidence * 100).toFixed(0) + '%' : '—'}</span>
+					<span class="text-2xs text-muted-foreground text-center">Rerata Confidence</span>
+				</div>
 			</div>
 		</Card>
 	{/if}
