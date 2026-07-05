@@ -25,11 +25,20 @@ vi.mock("../src/lib/server/db/index.js", () => ({
   })),
 }));
 
+vi.mock("../src/lib/server/whatsapp/worker-url.js", () => ({
+  getWorkerUrl: vi.fn(() => Promise.resolve("http://127.0.0.1:9494")),
+  getWorkerUrlSync: vi.fn(() => "http://127.0.0.1:9494"),
+  invalidateWorkerUrlCache: vi.fn(),
+}));
+
 vi.mock("node:fs", () => ({
   existsSync: vi.fn(() => true),
   mkdirSync: vi.fn(),
   appendFileSync: vi.fn(),
 }));
+
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe("WorkerManager", () => {
   let manager: any;
@@ -37,6 +46,7 @@ describe("WorkerManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.resetModules();
+    mockFetch.mockResolvedValue({ ok: true });
   });
 
   it("starts with stopped state", async () => {

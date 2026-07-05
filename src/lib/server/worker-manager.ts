@@ -2,7 +2,9 @@ import { spawn, execSync, type ChildProcess } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import net from "node:net";
+import http from "node:http";
 import { getDb } from "./db/index.js";
+import { getWorkerUrl } from "./whatsapp/worker-url.js";
 
 const PROJECT_ROOT = process.cwd();
 const WORKER_SCRIPT = path.resolve(PROJECT_ROOT, "worker/index.ts");
@@ -135,16 +137,20 @@ class WorkerManager {
       return { ok: false, pid: null, error: "Auto-restart dinonaktifkan karena crash loop. Stop & start manual required." };
     }
 
-    const portFree = await checkPort(WORKER_PORT);
+    const workerUrl = await getWorkerUrl();
+    const portMatch = workerUrl.match(/:(\d+)$/);
+    const targetPort = portMatch ? parseInt(portMatch[1]) : WORKER_PORT;
+
+    const portFree = await checkPort(targetPort);
     if (!portFree) {
-      writeLog("WARN", `Port ${WORKER_PORT} sudah terpakai, mencoba kill occupying process`);
-      console.log(`[WorkerManager] Port ${WORKER_PORT} already in use. Attempting to kill occupying process...`);
-      killProcessOnPort(WORKER_PORT);
+      writeLog("WARN", `Port ${targetPort} sudah terpakai, mencoba kill occupying process`);
+      console.log(`[WorkerManager] Port ${targetPort} already in use. Attempting to kill occupying process...`);
+      killProcessOnPort(targetPort);
       await new Promise((r) => setTimeout(r, 2000));
-      const retryFree = await checkPort(WORKER_PORT);
+      const retryFree = await checkPort(targetPort);
       if (!retryFree) {
-        writeLog("ERROR", `Port ${WORKER_PORT} masih terpakai setelah kill attempt`);
-        return { ok: false, pid: null, error: `Port ${WORKER_PORT} masih terpakai. Matikan proses lain secara manual.` };
+        writeLog("ERROR", `Port ${targetPort} masih terpakai setelah kill attempt`);
+        return { ok: false, pid: null, error: `Port ${targetPort} masih terpakai. Matikan proses lain secara manual.` };
       }
     }
 
@@ -159,7 +165,7 @@ class WorkerManager {
       [tsxCli, WORKER_SCRIPT],
       {
         stdio: ["ignore", "pipe", "pipe"],
-        env: { ...process.env },
+        env: { ...process.env, WORKER_API_PORT: String(targetPort) },
         cwd: PROJECT_ROOT,
       }
     );
@@ -222,10 +228,16 @@ class WorkerManager {
       this.lastKnownStatus = "error";
     });
 
+    const ready = await this.waitForReady();
+    if (!ready && !this.running) {
+      return { ok: false, pid: null, error: "Worker process started but API tidak responsif dalam 20s" };
+    }
+
+    this.lastKnownStatus = "running";
     return { ok: true, pid: this.pid };
   }
 
-  async stop(): Promise<{ ok: boolean }> {
+  async stop(): Promise<{ ok: boolean; error?: string }> {
     if (!this.running || !this.process) {
       if (!this.running) {
         this.crashTimestamps = [];
@@ -272,6 +284,20 @@ class WorkerManager {
 
   lastStatus(): string {
     return this.lastKnownStatus;
+  }
+
+  private async waitForReady(): Promise<boolean> {
+    const maxAttempts = 20; // ~20s total timeout
+    for (let i = 0; i < maxAttempts; i++) {
+      if (!this.running) return false;
+      try {
+        const url = await getWorkerUrl();
+        const res = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(2000) });
+        if (res.ok) return true;
+      } catch { /* still starting */ }
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+    return this.running;
   }
 }
 

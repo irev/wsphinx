@@ -2,6 +2,7 @@ import { json } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types.js";
 import { getDb } from "$lib/server/db/index.js";
 import { isAdmin } from "$lib/server/auth/guard.js";
+import { invalidateWorkerUrlCache } from "$lib/server/whatsapp/worker-url.js";
 
 export const GET: RequestHandler = async ({ url }) => {
   const db = getDb();
@@ -29,5 +30,10 @@ export const PUT: RequestHandler = async (event) => {
     update: { value: String(body.value ?? "") },
     create: { key: body.key, value: String(body.value ?? "") },
   });
+
+  if (body.key === "wa_worker_url") {
+    invalidateWorkerUrlCache();
+  }
+
   return json({ key: setting.key, value: setting.value });
 };

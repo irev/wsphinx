@@ -25,3 +25,8 @@ export async function getWorkerUrl(): Promise<string> {
 export function getWorkerUrlSync(): string {
   return cachedUrl || ENV_URL;
 }
+
+export function invalidateWorkerUrlCache() {
+  cachedUrl = null;
+  lastFetch = 0;
+}

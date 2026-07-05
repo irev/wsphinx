@@ -47,7 +47,7 @@ describe("getWorkerUrl", () => {
     const { getWorkerUrl } = await import("../src/lib/server/whatsapp/worker-url.js");
 
     const url = await getWorkerUrl();
-    expect(url).toBe("http://127.0.0.1:3457");
+    expect(url).toBe("http://127.0.0.1:9494");
   });
 
   it("caches URL within TTL", async () => {
