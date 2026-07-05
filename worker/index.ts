@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { createRequire } from "node:module";
-import { writeFileSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "node:fs";
+import path from "node:path";
 import http from "node:http";
 import { WebJSAdapter } from "../src/lib/server/whatsapp/webjs-adapter.js";
 import { findChromeExecutable } from "../src/lib/server/whatsapp/chrome-helper.js";
@@ -9,9 +10,12 @@ import { classifyMessage } from "../src/lib/server/classifier/index.js";
 import { maybeAutoReply } from "../src/lib/server/auto-reply/index.js";
 
 const require = createRequire(import.meta.url);
-const QRCode = require("qrcode");
+const QRCodeTerminal = require("qrcode-terminal");
+import QRCode from "qrcode";
 
-const STATUS_FILE = "./.whatsapp-status.json";
+const STATUS_FILE = path.resolve(".whatsapp-status.json");
+const QR_DIR = path.resolve(".qr-temp");
+const QR_FILE = path.join(QR_DIR, "qr.png");
 
 function writeStatus(status: string, qrCode?: string) {
   try {
@@ -22,39 +26,24 @@ function writeStatus(status: string, qrCode?: string) {
 const SOURCE_NAME = process.env.WHATSAPP_SOURCE_NAME || "Grup Support IT";
 const WORKER_START_TIME = Date.now();
 
-function renderCompactQR(text: string): string {
-  try {
-    const qrData = QRCode.create(text);
-    const size = qrData.modules.size;
-    const data = qrData.modules.data;
-    const black = "\x1b[40m \x1b[0m";
-    const white = "\x1b[47m \x1b[0m";
-    const margin = Array(size + 1).join(white);
-    let out = margin + "\n";
-    for (let y = 0; y < size; y++) {
-      out += white;
-      for (let x = 0; x < size; x++) {
-        out += data[y * size + x] ? black : white;
-      }
-      out += "\n";
-    }
-    out += margin;
-    return out;
-  } catch {
-    return text;
-  }
-}
-
 async function main() {
   const db = getDb();
 
   let source = await db.whatsAppSource.findFirst({ where: { name: SOURCE_NAME } });
   if (!source) {
+    const waPhone = process.env.WHATSAPP_PHONE;
+    if (!waPhone) {
+      console.error("");
+      console.error(" Env WHATSAPP_PHONE tidak diset.");
+      console.error(" Set WHATSAPP_PHONE di .env file sebelum menjalankan worker.");
+      console.error("");
+      process.exit(1);
+    }
     source = await db.whatsAppSource.create({
       data: {
         name: SOURCE_NAME,
         type: "group",
-        phone: process.env.WHATSAPP_PHONE || "6281111111111",
+        phone: waPhone,
         active: true,
         description: "Auto-created by worker",
       },
@@ -77,19 +66,26 @@ async function main() {
 
   adapter.onStatusChange((state) => {
     writeStatus(state.status, state.qrCode);
+
+    if (state.qrCode) {
+      if (!existsSync(QR_DIR)) mkdirSync(QR_DIR, { recursive: true });
+      QRCode.toFile(QR_FILE, state.qrCode, { type: "png", width: 300, margin: 2, color: { dark: "#111827", light: "#ffffff" } }).catch(() => {});
+    }
+
     if (state.status === "connected") {
       console.log(`[${new Date().toISOString()}] WhatsApp terhubung. Worker berjalan di background. Tekan Ctrl+C untuk stop.`);
+      try { if (existsSync(QR_FILE)) unlinkSync(QR_FILE); } catch {}
+    } else if (state.status === "expired") {
+      console.log(" Sesi expired. Restart otomatis dalam 3 detik oleh adapter...");
+      writeStatus("restarting");
     } else {
       console.log(`[${new Date().toISOString()}] Status: ${state.status}`);
     }
+
     if (state.qrCode) {
       console.log("\nScan QR code below with WhatsApp to authenticate:\n");
-      console.log(renderCompactQR(state.qrCode));
+      QRCodeTerminal.generate(state.qrCode, { small: true });
       console.log("");
-    }
-    if (state.status === "expired") {
-      console.log(" Sesi expired. Restart otomatis dalam 3 detik oleh adapter...");
-      writeStatus("restarting");
     }
   });
 
@@ -135,7 +131,7 @@ async function main() {
     }
   });
 
-  const API_PORT = parseInt(process.env.WORKER_API_PORT || "3457");
+  const API_PORT = parseInt(process.env.WORKER_API_PORT || "9494");
   const apiServer = http.createServer(async (req, res) => {
     res.setHeader("Content-Type", "application/json");
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -231,7 +227,12 @@ async function main() {
     console.log(`Worker API listening on http://127.0.0.1:${API_PORT}`);
   });
 
-  await adapter.connect();
+  try {
+    await adapter.connect();
+  } catch (e) {
+    console.error(`[Worker] Failed to connect WhatsApp: ${(e as Error).message}`);
+    console.log("Worker will stay running — QR/retry flow handles reconnection.");
+  }
   if (adapter.getStatus().status !== "connected") {
     console.log("Worker running. Menunggu scan QR...");
   }

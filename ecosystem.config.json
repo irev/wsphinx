@@ -1,0 +1,32 @@
+{
+  "apps": [
+    {
+      "name": "whatapp-app",
+      "script": "build/index.js",
+      "env": {
+        "PORT": "9696",
+        "NODE_ENV": "production"
+      },
+      "max_memory_restart": "500M",
+      "error_file": "logs/app-error.log",
+      "out_file": "logs/app-out.log",
+      "merge_logs": true,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z"
+    },
+    {
+      "name": "whatapp-worker",
+      "script": "worker/index.ts",
+      "interpreter": "npx",
+      "interpreter_args": "tsx",
+      "env": {
+        "WORKER_API_PORT": "9494",
+        "NODE_ENV": "production"
+      },
+      "max_memory_restart": "500M",
+      "error_file": "logs/worker-error.log",
+      "out_file": "logs/worker-out.log",
+      "merge_logs": true,
+      "log_date_format": "YYYY-MM-DD HH:mm:ss Z"
+    }
+  ]
+}

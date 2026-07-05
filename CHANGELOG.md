@@ -7,6 +7,120 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 ## Unreleased
 
 ### Added
+
+- **Port detection**: Script `scripts/check-ports.ts` mengecek konflik port sebelum app jalan — terintegrasi ke `npm run dev`, `npm run worker`, dan `npm run preview`.
+- **Central port config**: `src/lib/server/ports.ts` berisi kumpulan port + async `checkAllPorts()` untuk runtime reference.
+- **`.env.example`**: Tambah `VITE_PORT` (9393) dan `VITE_PREVIEW_PORT` (9595).
+
+### Changed
+
+- **Port aplikasi dipindah ke range 9000+** untuk hindari bentrok dengan aplikasi lain:
+  - Dev server: `5173` → **`9393`**
+  - Worker API: `3457` → **`9494`**
+  - Preview server: `4173` → **`9595`**
+  - Production (adapter-node): `3000` → **`9696`** (via `PORT` env)
+- **`vite.config.ts`**: Tambah `server.port` + `preview.port` dengan `strictPort: true`.
+- **`worker/index.ts`**: Default `WORKER_API_PORT` fallback dari `3457` → `9494`.
+- **`prisma/seed.ts`**: Default `wa_worker_url` dari `:3457` → `:9494`.
+- **`worker-url.ts`**: Default `ENV_URL` dari `:3457` → `:9494`.
+- **Test files**: Hardcoded `localhost:5173` diubah ke `:9393` di `helpers.ts`, `auth-login.test.ts`, `api-logs.test.ts`.
+
+### Added
+
+- **Docker support**: `Dockerfile` (multi-stage build), `docker-compose.yml` (app + worker + ollama), `.dockerignore`.
+- **PM2 support**: `ecosystem.config.json` dengan 2 apps (`whatapp-app`, `whatapp-worker`) + log rotation.
+- **README.md diperbarui**: 3 metode instalasi (Standard, Docker, PM2) + tabel konfigurasi lengkap + daftar port.
+
+- **Wireframe adjustments**: 3 halaman disesuaikan dengan wireframe di `docs/wires/`:
+  - **Tickets**: Search bar "Cari tiket..." dengan debounce + tombol "Add Card" per kolom status untuk quick-create tiket.
+  - **Reports**: Period selector (Daily/Weekly/Monthly) + date picker + rich result card dengan stat grid, Copy/Download buttons, follow-up ticket table, detail expandable.
+  - **Audit**: Expandable row detail — klik baris untuk lihat metadata perubahan (fromStatus→toStatus, IP, User Agent, note, confidence).
+- **Layout**: Tambah `timeline` → "Riwayat" di subtitle/title mapping.
+- **TicketFormDialog**: Prop `prefillStatusId` untuk quick-create dengan status pre-filled dari tombol "Add Card".
+
+### Fixed
+
+- **Page title dinamis**: Layout sekarang pakai `currentPage.title` dari derived path mapping — title berubah per halaman (Dashboard, Pesan, Tickets, dll.) bukan hardcoded "WhatsApp Tech Support".
+- **Audit Log entity ID**: Entity column untuk ticket sekarang menampilkan `ticketNumber` dari detail JSON (misal `TKT-2025-001`) bukan potongan raw CUID (`#cm7a1b2`).
+- **Audit Log status CUID → nama**: Backend resolve `fromStatus`/`toStatus` CUID ke nama status (Open, In Progress, Closed) sebelum dikirim ke frontend. Detail column menampilkan `Open → Closed` bukan `cmr7xxx → cmr7xxx`.
+
+### Removed
+
+- **Override `<svelte:head>` di login, settings, sources**: Title sekarang konsisten dari layout, hapus 3 override title lokal yang formatnya inkonsisten.
+
+### Changed
+
+- **Audit log `statusLabel()`**: Fallback untuk raw CUID (>10 chars) ditampilkan sebagai `#cm7a1b2` bukan full string panjang.
+- **Dashboard bottom grid**: Tambah `items-stretch` agar card "Masalah Terbanyak" dan "Aktivitas Terbaru" sama tinggi.
+- **Inbox lightbox**: Ganti inline style overlay dengan `wt-overlay` class yang sudah terdefinisi di `custom.css`.
+- **Dashboard `$derived` idiomatic**: `categoryCounts` ganti ke `$derived.by()` dan template panggil langsung tanpa `()`.
+- **Dashboard — Aktivitas Terbaru**: Tambah link "Lihat Semua" ke `/tickets` di footer card.
+- **Inbox — creating state**: `creating` boolean global diganti `creatingPerId` Set<string> agar tiket bisa dibuat dari pesan berbeda secara concurrent tanpa tombol saling disabled.
+- **Test files fix**: `api-logs.test.ts` pakai `as any` pada mock event, `api-stats.test.ts` import `mockAdminEvent` + passing event ke GET.
+- **Mobile brand icon login**: Konsisten dengan desktop (`size-9 rounded-xl bg-white/20 backdrop-blur-sm`).
+
+### Added
+
+- **Audit log retention**: DELETE `/api/audit?days=90` — purge entri lebih tua dari N hari (min 30, max 365). Tombol hapus di halaman Audit dengan konfirmasi.
+- **Login page animation**: Form card login sekarang punya `animate-slide-up` (fade-in + translate dari bawah 20px) untuk first impression lebih hidup.
+- **Dashboard empty state**: Saat data kosong (belum ada tiket), tampilkan onboarding card dengan 3 langkah panduan + CTA ke Settings.
+- **Dashboard KPI accent strip**: Setiap KPI card punya strip warna di atas (biru/kuning/merah/hijau) sesuai metrik — depth visual lebih baik.
+- **Inbox source icon + tooltip**: Nama sumber pesan di kolom Pengirim sekarang punya icon grup/kontak + tooltip nomor telepon.
+- **Missing CSS utilities**: `hover:bg-muted/30`, `disabled:opacity-30`, `disabled:pointer-events-none` — semua hover/disabled state yang sebelumnya silent fail karena tidak ada di precompiled `styles.css`.
+- **Priority border classes**: `border-prio-critical`, `border-prio-high`, `border-prio-medium`, `border-prio-low` di `custom.css` — bordir kiri card klasifikasi inbox sekarang terlihat (merah/oranye/biru/abu) menggunakan CSS variable yang terdefinisi, bukan Tailwind utility yang tidak tercompile.
+
+- **Session WA tidak stabil saat restart**: Hapus random User Agent & Viewport yang berubah tiap restart, ganti dengan 1 nilai stabil (Chrome 125 / 1366x768) — mencegah WhatsApp menganggap browser baru dan meminta scan ulang QR. Gunakan `WA_SESSION_PATH` env var (default `.session-data`) untuk path absolut penyimpanan session. Worker STATUS_FILE juga kini absolute path.
+
+### Changed
+- **Layout page title**: `text-base` → `text-xl`, tambah `pb-7.5`, subtitle otomatis per halaman via `currentPage.subtitle` map.
+- **Settings sidebar**: Lebar sidebar distandardisasi ke `w-[230px] shrink-0` (sebelumnya `lg:w-[220px] xl:w-[240px]`).
+- **Reports page**: 3 card section dikonversi dari inline `kt-card` ke `<Card>` component.
+- **Dashboard KPI grid**: Tambah `items-stretch` agar semua card KPI sama tinggi.
+
+### Added
+- **Page subtitles**: Setiap halaman utama (Dashboard, Inbox, Tickets, Reports, Settings, Sources, Audit) punya subtitle deskriptif yang ditampilkan di bawah page title.
+
+### Added
+- **Worker Live Logs**: stdout/stderr disimpan ke `worker/logs/YYYY-MM-DD.log` dengan sanitasi (mask phone, filter QR). Endpoint `GET /api/whatsapp/worker/logs?lines=N&date=YYYY-MM-DD`. UI terminal-style viewer collapsible di Connection tab dengan date picker + refresh.
+- **Connection Quality Dashboard**: Latency history 24 jam disimpan di `WorkerManager`, direkam setiap health check. Endpoint `GET /api/whatsapp/worker/latency`. Mini bar chart di Connection tab (60 data points, hijau/merah).
+- **Worker Crash Notification**: Polling setiap 30 detik ke `/api/whatsapp/worker`. Jika status berubah running→stopped, show toast + desktop notification (Notification API).
+- **Stats Card** di Connection tab: pesan/classified/support/tickets hari ini + minggu, unprocessed count, avg confidence.
+- **Test Send Message** form di Connection tab: input chat ID + teks, kirim via worker API.
+- **API**: `GET /api/whatsapp/stats` — agregasi pesan & tiket hari ini + 7 hari terakhir.
+- **Worker Settings Panel** di Settings → Connection: Worker API URL (input + simpan), Auto Restart Worker (toggle), Max Reconnect (number 1-50), QR Refresh Interval (number 5-60 detik).
+- **`getWorkerUrl()` utility** di `src/lib/server/whatsapp/worker-url.ts` — baca URL dari DB dengan cache 60 detik, fallback ke env.
+
+### Added
+- **Worker Management** (Fase 2): Start/stop worker dari UI tanpa perlu terminal terpisah.
+  - `src/lib/server/worker-manager.ts` — Singleton class spawn `tsx worker/index.ts` sebagai child process, auto-restart on crash (configurable via `wa_worker_auto_restart`), graceful SIGTERM → SIGKILL setelah 5s.
+  - `GET /api/whatsapp/worker` — Worker status (running, PID, uptime, worker URL).
+  - `POST /api/whatsapp/worker/start` — Start worker process (admin only).
+  - `POST /api/whatsapp/worker/stop` — Stop worker process (admin only).
+  - UI: Worker Status Card di Settings → Connection — indikator running/stopped, PID, uptime, worker URL, tombol Start/Stop.
+  - Audit log: `worker.start` dan `worker.stop`.
+- **`getClientAddress()` error handling**: Semua route yang panggil `getClientAddress()` pakai try/catch fallback ke `127.0.0.1` — fixes error di dev/Playwright.
+
+### Security
+- **Autentikasi JWT**: Login via phone + password (bcrypt), httpOnly cookie, 7 hari expiry. Endpoint: `POST /api/auth/login`, `POST /api/auth/logout`, `GET /api/auth/me`.
+- **Global auth guard** (`src/hooks.server.ts`): Semua `/api/*` route (kecuali `/api/auth/login`) wajib JWT valid. 401 jika tidak ada session, 403 jika role tidak sesuai.
+- **RBAC**: Role guard `isAdmin()` dan `isAdminOrPic()` di semua route sensitif — settings CRUD, export/import, send message, chat analyze.
+- **Rate limiting**: 100 request/menit per IP di hooks.server.ts dengan fallback `127.0.0.1` jika dev mode.
+- **Security headers**: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, CSP + HSTS di production.
+- **Soft delete refactor**: 5 settings endpoints (users, categories, statuses, priorities, sources) ganti `delete()` jadi `update({ active: false })` — data tidak hilang permanen.
+- **Hardcoded phone dihapus**: `worker/index.ts:57` — env `WHATSAPP_PHONE` wajib diset, exit dengan pesan error jika tidak ada.
+- **Ollama consent**: Toggle "Kirim Data ke AI" di Settings → Processing. Jika nonaktif, fallback ke rule-based classification saja. Phone number di-anonimkan sebelum dikirim ke Ollama.
+- **Audit log `userId`**: Semua audit log sekarang menyertakan `userId` dari session (kecuali login.failed). Field baru `ipAddress` dan `userAgent` di AuditLog schema.
+
+### Added
+- **Login page** (`/login`): Form phone + password, error handling, auto-redirect ke halaman sebelumnya setelah login.
+- **Auth store** (`$lib/stores/auth.svelte.ts`): State management login/logout, auto-fetch `/api/auth/me` di mount.
+- **Schema migration**: `User.passwordHash` (bcrypt), `SupportPriority.active`, `SupportStatus.active`, `AuditLog.ipAddress`, `AuditLog.userAgent`.
+- **Seed update**: 3 user seed dengan passwordHash (`admin123` via bcrypt). AppSettings baru: `wa_llm_consent`, `wa_worker_url`, `wa_worker_auto_restart`, `wa_worker_max_reconnect`, `wa_worker_qr_interval`.
+- **ROADMAP.md**: Rencana implementasi 5 fase (Auth → Worker Management → Worker Settings → Stats & History → Advanced Features), audit keamanan lengkap, area terdampak, matriks data sensitif, dan test plan.
+- **`.env.example`**: Template environment variables lengkap termasuk `JWT_SECRET` dan `WHATSAPP_PHONE`.
+- **`maskInApi()` helper**: Masking phone number di API response JSON.
+- **bcryptjs** dependency untuk password hashing.
+- **jsonwebtoken** dependency untuk JWT session management.
 - **Profil WA di header**: nama (pushname), nomor telepon, dan foto profil dari akun WhatsApp yang terkoneksi — fallback ke "PIC Satu"/"Teknisi" jika belum loaded
 - `getMe()` method di `WhatsAppReader` interface & `WebJSAdapter` — baca `client.info.pushname`, `client.info.wid`, `client.info.platform`
 - Worker endpoint `GET /api/me`

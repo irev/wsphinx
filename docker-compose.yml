@@ -1,0 +1,60 @@
+services:
+  app:
+    build: .
+    ports:
+      - "9696:9696"
+    environment:
+      - PORT=9696
+      - WORKER_API_PORT=9494
+      - WORKER_API_URL=http://worker:9494
+      - DATABASE_URL=file:/data/prod.db
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - WHATSAPP_SOURCE_NAME=Grup Support IT
+      - WHATSAPP_PHONE=${WHATSAPP_PHONE}
+    volumes:
+      - app-data:/data
+      - wa-session:/app/.session-data
+    depends_on:
+      worker:
+        condition: service_started
+      ollama:
+        condition: service_healthy
+
+  worker:
+    build: .
+    ports:
+      - "9494:9494"
+    environment:
+      - WORKER_API_PORT=9494
+      - DATABASE_URL=file:/data/prod.db
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama3.2
+      - WHATSAPP_SOURCE_NAME=Grup Support IT
+      - WHATSAPP_PHONE=${WHATSAPP_PHONE}
+      - WA_SESSION_PATH=/app/.session-data
+    volumes:
+      - app-data:/data
+      - wa-session:/app/.session-data
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  wa-session:
+  ollama-data:

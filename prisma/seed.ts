@@ -1,8 +1,11 @@
 import { PrismaClient } from "../generated/prisma/client.ts";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import bcrypt from "bcryptjs";
 
 const adapter = new PrismaBetterSqlite3({ url: "file:./dev.db" });
 const prisma = new PrismaClient({ adapter });
+
+const PASSWORD_HASH = bcrypt.hashSync("admin123", 10);
 
 async function main() {
   const priorities = await Promise.all([
@@ -37,9 +40,9 @@ async function main() {
   ]);
 
   const pics = await Promise.all([
-    prisma.user.upsert({ where: { phone: "6281111111111" }, update: {}, create: { name: "PIC Satu", phone: "6281111111111", role: "pic", email: "pic.satu@company.com" } }),
-    prisma.user.upsert({ where: { phone: "6281111111112" }, update: {}, create: { name: "PIC Dua", phone: "6281111111112", role: "pic", email: "pic.dua@company.com" } }),
-    prisma.user.upsert({ where: { phone: "6281111111113" }, update: {}, create: { name: "Admin System", phone: "6281111111113", role: "admin", email: "admin@company.com" } }),
+    prisma.user.upsert({ where: { phone: "6281111111111" }, update: { name: "PIC Satu", role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Satu", phone: "6281111111111", role: "pic", email: "pic.satu@company.com", passwordHash: PASSWORD_HASH } }),
+    prisma.user.upsert({ where: { phone: "6281111111112" }, update: { name: "PIC Dua", role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH }, create: { name: "PIC Dua", phone: "6281111111112", role: "pic", email: "pic.dua@company.com", passwordHash: PASSWORD_HASH } }),
+    prisma.user.upsert({ where: { phone: "6281111111113" }, update: { name: "Admin System", role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH }, create: { name: "Admin System", phone: "6281111111113", role: "admin", email: "admin@company.com", passwordHash: PASSWORD_HASH } }),
   ]);
 
   let source = await prisma.whatsAppSource.findFirst();
@@ -63,6 +66,11 @@ async function main() {
     prisma.appSetting.upsert({ where: { key: "wa_ignore_keywords" }, update: {}, create: { key: "wa_ignore_keywords", value: "spam,promo,info,testing" } }),
     prisma.appSetting.upsert({ where: { key: "wa_business_hours" }, update: {}, create: { key: "wa_business_hours", value: '{"monday":{"start":"08:00","end":"17:00"},"tuesday":{"start":"08:00","end":"17:00"},"wednesday":{"start":"08:00","end":"17:00"},"thursday":{"start":"08:00","end":"17:00"},"friday":{"start":"08:00","end":"17:00"},"saturday":{"start":"08:00","end":"12:00"}}' } }),
     prisma.appSetting.upsert({ where: { key: "wa_session_persistence" }, update: {}, create: { key: "wa_session_persistence", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_worker_url" }, update: {}, create: { key: "wa_worker_url", value: "http://127.0.0.1:9494" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_worker_auto_restart" }, update: {}, create: { key: "wa_worker_auto_restart", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_worker_max_reconnect" }, update: {}, create: { key: "wa_worker_max_reconnect", value: "10" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_worker_qr_interval" }, update: {}, create: { key: "wa_worker_qr_interval", value: "15" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_llm_consent" }, update: {}, create: { key: "wa_llm_consent", value: "true" } }),
   ]);
 
   console.log("Seed completed (idempotent)");
