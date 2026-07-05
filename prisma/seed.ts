@@ -54,12 +54,23 @@ async function main() {
     });
   }
 
+  const defaultSettings = await Promise.all([
+    prisma.appSetting.upsert({ where: { key: "wa_auto_reply_enabled" }, update: {}, create: { key: "wa_auto_reply_enabled", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_auto_reply_template" }, update: {}, create: { key: "wa_auto_reply_template", value: "Halo {name}, laporan Anda tentang {summary} sudah kami terima. Tim support akan segera menindaklanjuti. Terima kasih." } }),
+    prisma.appSetting.upsert({ where: { key: "wa_classification_enabled" }, update: {}, create: { key: "wa_classification_enabled", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_auto_ticket_enabled" }, update: {}, create: { key: "wa_auto_ticket_enabled", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_auto_reply_global" }, update: {}, create: { key: "wa_auto_reply_global", value: "true" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_ignore_keywords" }, update: {}, create: { key: "wa_ignore_keywords", value: "spam,promo,info,testing" } }),
+    prisma.appSetting.upsert({ where: { key: "wa_business_hours" }, update: {}, create: { key: "wa_business_hours", value: '{"monday":{"start":"08:00","end":"17:00"},"tuesday":{"start":"08:00","end":"17:00"},"wednesday":{"start":"08:00","end":"17:00"},"thursday":{"start":"08:00","end":"17:00"},"friday":{"start":"08:00","end":"17:00"},"saturday":{"start":"08:00","end":"12:00"}}' } }),
+  ]);
+
   console.log("Seed completed (idempotent)");
   console.log(`  ${priorities.length} priorities`);
   console.log(`  ${statuses.length} statuses`);
   console.log(`  ${categories.length} categories`);
   console.log(`  ${pics.length} users (PICs + admin)`);
   console.log(`  1 WhatsApp source`);
+  console.log(`  ${defaultSettings.length} app settings`);
 }
 
 main()

@@ -20,6 +20,7 @@ function writeStatus(status: string, qrCode?: string) {
 }
 
 const SOURCE_NAME = process.env.WHATSAPP_SOURCE_NAME || "Grup Support IT";
+const WORKER_START_TIME = Date.now();
 
 function renderCompactQR(text: string): string {
   try {
@@ -184,6 +185,28 @@ async function main() {
       } else if (req.method === "GET" && path === "/api/status") {
         const state = adapter.getStatus();
         res.end(JSON.stringify({ data: { status: state.status, qrCode: state.qrCode } }));
+      } else if (req.method === "POST" && path === "/api/disconnect") {
+        await adapter.disconnect();
+        writeStatus("disconnected");
+        res.end(JSON.stringify({ ok: true }));
+      } else if (req.method === "POST" && path === "/api/reconnect") {
+        await adapter.restart();
+        const state = adapter.getStatus();
+        writeStatus(state.status, state.qrCode);
+        res.end(JSON.stringify({ data: { status: state.status, qrCode: state.qrCode } }));
+      } else if (req.method === "GET" && path === "/api/health") {
+        const state = adapter.getStatus();
+        const info = adapter.getReconnectInfo();
+        res.end(JSON.stringify({
+          data: {
+            status: state.status,
+            qrCode: state.qrCode,
+            sourceName: SOURCE_NAME,
+            uptime: Date.now() - WORKER_START_TIME,
+            reconnectAttempts: info.reconnectAttempts,
+            maxReconnectAttempts: info.maxReconnectAttempts,
+          },
+        }));
       } else {
         res.statusCode = 404;
         res.end(JSON.stringify({ error: "Not found" }));

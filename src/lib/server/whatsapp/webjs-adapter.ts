@@ -521,6 +521,10 @@ export class WebJSAdapter implements WhatsAppReader {
     return { status: this.status, qrCode: this.qrCode };
   }
 
+  getReconnectInfo() {
+    return { reconnectAttempts: this.reconnectAttempts, maxReconnectAttempts: this.maxReconnectAttempts };
+  }
+
   onMessage(handler: MessageHandler) {
     this.messageHandlers.push(handler);
   }

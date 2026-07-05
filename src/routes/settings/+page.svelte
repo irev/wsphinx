@@ -173,6 +173,127 @@
 	let activeMenu = $state<string>('priorities');
 	let actionMenuId = $state<string | null>(null);
 
+	// ── WA Connection ──
+	let waStatus = $state<{ status: string; qrCode: string | null }>({ status: 'loading', qrCode: null });
+	let waHealth = $state<{ worker: string; status: string; latency: number | null; uptime: number; reconnectAttempts: number; maxReconnectAttempts: number } | null>(null);
+	let waHealthLoading = $state(false);
+	let waQrImage = $state<string | null>(null);
+	let waActionLoading = $state(false);
+	let waStatusInterval: ReturnType<typeof setInterval> | undefined;
+
+	async function fetchWaStatus() {
+		try {
+			const res = await fetch('/api/whatsapp/status');
+			if (res.ok) {
+				const d = await res.json();
+				waStatus = { status: d.status || 'worker_offline', qrCode: d.qrCode || null };
+			} else {
+				waStatus = { status: 'worker_offline', qrCode: null };
+			}
+		} catch {
+			waStatus = { status: 'worker_offline', qrCode: null };
+		}
+	}
+
+	async function fetchWaQr() {
+		try {
+			const res = await fetch('/api/whatsapp/qr-image');
+			if (res.ok) {
+				const d = await res.json();
+				waQrImage = d.qrImage || null;
+			} else {
+				waQrImage = null;
+			}
+		} catch {
+			waQrImage = null;
+		}
+	}
+
+	async function checkWaHealth() {
+		waHealthLoading = true;
+		try {
+			const res = await fetch('/api/whatsapp/health');
+			const d = await res.json();
+			waHealth = d;
+		} catch {
+			waHealth = { worker: 'unreachable', status: 'error', latency: null, uptime: 0, reconnectAttempts: 0, maxReconnectAttempts: 10 };
+		}
+		waHealthLoading = false;
+	}
+
+	async function waDisconnect() {
+		waActionLoading = true;
+		try {
+			const res = await fetch('/api/whatsapp/disconnect', { method: 'POST' });
+			if (res.ok) showToast('success', 'WhatsApp disconnected');
+			else showToast('error', 'Gagal disconnect');
+		} catch {
+			showToast('error', 'Worker unreachable');
+		}
+		waActionLoading = false;
+		await fetchWaStatus();
+	}
+
+	async function waReconnect() {
+		waActionLoading = true;
+		try {
+			const res = await fetch('/api/whatsapp/reconnect', { method: 'POST' });
+			if (res.ok) {
+				const d = await res.json();
+				showToast('success', 'WhatsApp reconnecting...');
+				if (d.status === 'scanning_qr') await fetchWaQr();
+			} else showToast('error', 'Gagal reconnect');
+		} catch {
+			showToast('error', 'Worker unreachable');
+		}
+		waActionLoading = false;
+	}
+
+	$effect(() => {
+		if (activeMenu === 'wa-connection') {
+			fetchWaStatus();
+			fetchWaQr();
+			waStatusInterval = setInterval(fetchWaStatus, 3000);
+			return () => { if (waStatusInterval) clearInterval(waStatusInterval); };
+		}
+	});
+
+	// ── WA App Settings ──
+	let waSettings = $state<Record<string, string>>({});
+	let waSettingsLoading = $state(true);
+	let waSettingsSaving = $state(false);
+
+	async function loadWaSettings() {
+		waSettingsLoading = true;
+		try {
+			const res = await fetch('/api/settings/app');
+			if (res.ok) waSettings = await res.json();
+		} catch { /* ignore */ }
+		waSettingsLoading = false;
+	}
+
+	async function saveWaSetting(key: string, value: string) {
+		waSettingsSaving = true;
+		try {
+			const res = await fetch('/api/settings/app', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ key, value }),
+			});
+			if (res.ok) {
+				waSettings[key] = value;
+				showToast('success', 'Disimpan');
+			} else showToast('error', 'Gagal menyimpan');
+		} catch {
+			showToast('error', 'Gagal menyimpan');
+		}
+		waSettingsSaving = false;
+	}
+
+	$effect(() => {
+		if (activeMenu === 'wa-autoreply' || activeMenu === 'wa-processing') loadWaSettings();
+	});
+
 	function entityStateRef(entity: string) {
 		const map: Record<string, typeof pr> = { priorities: pr, statuses: st, categories: ct, users: us, sources: sr };
 		return map[entity];
@@ -289,6 +410,38 @@
 	const entityLabels: Record<string, string> = {
 		priorities: 'Prioritas', statuses: 'Status', categories: 'Kategori', users: 'User', sources: 'Source'
 	};
+
+	function formatUptime(ms: number): string {
+		const s = Math.floor(ms / 1000);
+		const m = Math.floor(s / 60);
+		const h = Math.floor(m / 60);
+		if (h > 0) return `${h}j ${m % 60}m`;
+		if (m > 0) return `${m}m ${s % 60}d`;
+		return `${s}d`;
+	}
+
+	function parseBusinessHours(json: string | undefined, day: string): { start: string; end: string } {
+		try {
+			const h = JSON.parse(json || '{}');
+			return h[day] || { start: '08:00', end: '17:00' };
+		} catch {
+			return { start: '08:00', end: '17:00' };
+		}
+	}
+
+	function updateBusinessHour(day: string, field: 'start' | 'end', value: string) {
+		try {
+			const h = JSON.parse(waSettings.wa_business_hours || '{}');
+			if (!h[day]) h[day] = { start: '08:00', end: '17:00' };
+			h[day][field] = value;
+			waSettings.wa_business_hours = JSON.stringify(h);
+		} catch {
+			const h: Record<string, any> = {};
+			h[day] = { start: '08:00', end: '17:00' };
+			h[day][field] = value;
+			waSettings.wa_business_hours = JSON.stringify(h);
+		}
+	}
 </script>
 
 <svelte:head>
@@ -332,6 +485,25 @@
 				<button onclick={() => activeMenu = 'sources'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'sources' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
 					<i class="ki-filled ki-messages text-sm shrink-0"></i>
 					WhatsApp Sources
+				</button>
+			</nav>
+		</div>
+		<div class="border-t border-border mx-4 my-2"></div>
+		<div class="p-4 pt-0">
+			<span class="text-xs font-semibold uppercase tracking-wider text-muted-foreground block mb-2 px-3">WhatsApp</span>
+			<nav class="flex flex-col gap-0.5">
+				<button onclick={() => activeMenu = 'wa-connection'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'wa-connection' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
+					<i class="ki-filled ki-check-circle text-sm shrink-0"></i>
+					Connection
+					<span class="ml-auto inline-block size-2 rounded-full {waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'loading' ? 'bg-muted-foreground' : 'bg-destructive'}"></span>
+				</button>
+				<button onclick={() => activeMenu = 'wa-autoreply'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'wa-autoreply' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
+					<i class="ki-filled ki-messages text-sm shrink-0"></i>
+					Auto Reply
+				</button>
+				<button onclick={() => activeMenu = 'wa-processing'} class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors {activeMenu === 'wa-processing' ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'}">
+					<i class="ki-filled ki-menu text-sm shrink-0"></i>
+					Processing
 				</button>
 			</nav>
 		</div>
@@ -547,6 +719,176 @@
 				{@render PaginationControls({ state: us, onprev: () => { prevPage(us); loadEntity('users', us); }, onnext: () => { nextPage(us); loadEntity('users', us); } })}
 			{/snippet}
 		</Card>
+	{:else if activeMenu === 'wa-connection'}
+		<Card title="WhatsApp Connection">
+			{#snippet headerActions()}
+				<button onclick={fetchWaStatus} class="kt-btn kt-btn-sm kt-btn-ghost" aria-label="Refresh status">
+					<i class="ki-filled ki-refresh text-sm"></i>
+				</button>
+			{/snippet}
+			<div class="px-5 py-4 space-y-5">
+				{#if waStatus.status === 'loading'}
+					<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
+				{:else}
+					<div class="flex items-center gap-3">
+						<span class="inline-block size-3 rounded-full {waStatus.status === 'connected' ? 'bg-success' : waStatus.status === 'scanning_qr' || waStatus.status === 'reconnecting' ? 'bg-warning' : waStatus.status === 'worker_offline' ? 'bg-muted-foreground' : 'bg-destructive'}"></span>
+						<div>
+							<span class="font-medium text-foreground text-sm capitalize">{waStatus.status === 'worker_offline' ? 'Worker Offline' : waStatus.status === 'scanning_qr' ? 'Scan QR' : waStatus.status}</span>
+							{#if waStatus.status === 'connected'}
+								<span class="text-xs text-success ml-2"><i class="ki-filled ki-check-circle"></i> Terhubung</span>
+							{/if}
+						</div>
+					</div>
+
+					{#if waStatus.status === 'scanning_qr'}
+						<div class="flex justify-center py-2">
+							{#if waQrImage}
+								<img src={waQrImage} alt="QR Code" class="size-48 border border-border rounded-xl" />
+							{:else}
+								<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
+							{/if}
+						</div>
+					{/if}
+
+					<div class="grid grid-cols-2 gap-4 text-sm">
+						<div class="flex flex-col gap-1">
+							<span class="text-xs text-muted-foreground">Status</span>
+							<span class="font-medium text-foreground capitalize">{waStatus.status}</span>
+						</div>
+						<div class="flex flex-col gap-1">
+							<span class="text-xs text-muted-foreground">Last Health Check</span>
+							<span class="font-medium text-foreground">{waHealth ? formatUptime(waHealth.uptime) + ' ago' : '—'}</span>
+						</div>
+						<div class="flex flex-col gap-1">
+							<span class="text-xs text-muted-foreground">Latency</span>
+							<span class="font-medium text-foreground">{waHealth?.latency != null ? waHealth.latency + 'ms' : '—'}</span>
+						</div>
+						<div class="flex flex-col gap-1">
+							<span class="text-xs text-muted-foreground">Reconnect</span>
+							<span class="font-medium text-foreground">{waHealth?.reconnectAttempts ?? 0}/{waHealth?.maxReconnectAttempts ?? 10}</span>
+						</div>
+					</div>
+
+					<div class="flex flex-wrap gap-2 pt-1">
+						<button onclick={checkWaHealth} disabled={waHealthLoading} class="kt-btn kt-btn-sm kt-btn-outline">
+							{#if waHealthLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
+							<i class="ki-filled ki-health text-sm"></i>
+							Health Check
+						</button>
+						<button onclick={waReconnect} disabled={waActionLoading || waStatus.status === 'worker_offline'} class="kt-btn kt-btn-sm kt-btn-outline">
+							{#if waActionLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
+							<i class="ki-filled ki-refresh text-sm"></i>
+							Reconnect
+						</button>
+						<button onclick={waDisconnect} disabled={waActionLoading || waStatus.status === 'disconnected' || waStatus.status === 'worker_offline'} class="kt-btn kt-btn-sm kt-btn-danger">
+							<i class="ki-filled ki-power text-sm"></i>
+							Logout
+						</button>
+					</div>
+
+					{#if waHealth}
+						<div class="rounded-lg bg-muted/30 p-3 text-xs space-y-1">
+							<div class="flex justify-between"><span class="text-muted-foreground">Worker</span><span class="font-medium text-foreground">{waHealth.worker}</span></div>
+							<div class="flex justify-between"><span class="text-muted-foreground">Uptime</span><span class="font-medium text-foreground">{formatUptime(waHealth.uptime)}</span></div>
+						</div>
+					{/if}
+				{/if}
+			</div>
+		</Card>
+
+	{:else if activeMenu === 'wa-autoreply'}
+		<Card title="Auto Reply">
+			<div class="px-5 py-4 space-y-4">
+				{#if waSettingsLoading}
+					<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
+				{:else}
+					<label class="flex items-center gap-3 cursor-pointer">
+						<input type="checkbox" checked={waSettings.wa_auto_reply_global === 'true'} onchange={() => saveWaSetting('wa_auto_reply_global', waSettings.wa_auto_reply_global === 'true' ? 'false' : 'true')} class="kt-switch" />
+						<div>
+							<span class="text-sm font-medium text-foreground">Aktifkan Auto Reply</span>
+							<p class="text-xs text-muted-foreground">Balas otomatis setiap pesan support yang masuk</p>
+						</div>
+					</label>
+
+					<div class="border-t border-border pt-4">
+						<label for="ar-template" class="block text-xs font-medium text-foreground mb-1.5">Template Balasan</label>
+						<textarea id="ar-template" bind:value={waSettings.wa_auto_reply_template} rows="4" class="kt-input font-mono text-xs"></textarea>
+						<p class="text-2xs text-muted-foreground mt-1">Variables: {'{name}'} {'{ticket}'} {'{summary}'} {'{body}'}</p>
+					</div>
+
+					<div class="flex justify-end pt-2">
+						<button onclick={() => saveWaSetting('wa_auto_reply_template', waSettings.wa_auto_reply_template)} disabled={waSettingsSaving} class="kt-btn kt-btn-sm kt-btn-primary">
+							{#if waSettingsSaving}<span class="inline-block size-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
+							Simpan
+						</button>
+					</div>
+				{/if}
+			</div>
+		</Card>
+
+	{:else if activeMenu === 'wa-processing'}
+		<Card title="Message Processing">
+			<div class="px-5 py-4 space-y-5">
+				{#if waSettingsLoading}
+					<div class="kt-spinner"><div class="kt-spinner-ring"></div></div>
+				{:else}
+					<div class="space-y-3">
+						<label class="flex items-center gap-3 cursor-pointer">
+							<input type="checkbox" checked={waSettings.wa_classification_enabled !== 'false'} onchange={() => saveWaSetting('wa_classification_enabled', waSettings.wa_classification_enabled === 'false' ? 'true' : 'false')} class="kt-switch" />
+							<div>
+								<span class="text-sm font-medium text-foreground">Klasifikasi Otomatis</span>
+								<p class="text-xs text-muted-foreground">Klasifikasikan pesan sebagai support/non-support via AI</p>
+							</div>
+						</label>
+						<label class="flex items-center gap-3 cursor-pointer">
+							<input type="checkbox" checked={waSettings.wa_auto_ticket_enabled !== 'false'} onchange={() => saveWaSetting('wa_auto_ticket_enabled', waSettings.wa_auto_ticket_enabled === 'false' ? 'true' : 'false')} class="kt-switch" />
+							<div>
+								<span class="text-sm font-medium text-foreground">Buat Tiket Otomatis</span>
+								<p class="text-xs text-muted-foreground">Buat tiket support otomatis dari pesan terklasifikasi</p>
+							</div>
+						</label>
+						<label class="flex items-center gap-3 cursor-pointer">
+							<input type="checkbox" checked={waSettings.wa_auto_reply_enabled !== 'false'} onchange={() => saveWaSetting('wa_auto_reply_enabled', waSettings.wa_auto_reply_enabled === 'false' ? 'true' : 'false')} class="kt-switch" />
+							<div>
+								<span class="text-sm font-medium text-foreground">Balas Otomatis</span>
+								<p class="text-xs text-muted-foreground">Kirim balasan otomatis ke pesan support</p>
+							</div>
+						</label>
+					</div>
+
+					<div class="border-t border-border pt-4">
+						<label for="ignore-keys" class="block text-xs font-medium text-foreground mb-1.5">Abaikan Kata Kunci</label>
+						<input id="ignore-keys" type="text" bind:value={waSettings.wa_ignore_keywords} class="kt-input text-xs" placeholder="spam, promo, info" />
+						<p class="text-2xs text-muted-foreground mt-1">Pisahkan dengan koma. Pesan yang mengandung kata ini tidak diproses.</p>
+					</div>
+
+					<div class="border-t border-border pt-4">
+						<span class="text-xs font-medium text-foreground block mb-2">Jam Operasional</span>
+						<div class="space-y-2 text-sm">
+							{#each ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as day}
+								{@const dayLabel = { monday: 'Senin', tuesday: 'Selasa', wednesday: 'Rabu', thursday: 'Kamis', friday: 'Jumat', saturday: 'Sabtu' }[day]}
+								{@const hours = parseBusinessHours(waSettings.wa_business_hours, day)}
+								<div class="flex items-center gap-2">
+									<span class="w-16 text-xs text-muted-foreground">{dayLabel}</span>
+									<input type="time" value={hours.start} onchange={(e) => updateBusinessHour(day, 'start', (e.target as HTMLInputElement).value)} class="kt-input w-28 text-xs" />
+									<span class="text-xs text-muted-foreground">—</span>
+									<input type="time" value={hours.end} onchange={(e) => updateBusinessHour(day, 'end', (e.target as HTMLInputElement).value)} class="kt-input w-28 text-xs" />
+								</div>
+							{/each}
+							<p class="text-2xs text-muted-foreground mt-1">Di luar jam operasional, pesan tetap diterima tapi tidak otomatis dibalas.</p>
+						</div>
+					</div>
+
+					<div class="flex justify-end pt-2">
+						<button onclick={() => saveWaSetting('wa_ignore_keywords', waSettings.wa_ignore_keywords)} disabled={waSettingsSaving} class="kt-btn kt-btn-sm kt-btn-primary">
+							{#if waSettingsSaving}<span class="inline-block size-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
+							Simpan Filter
+						</button>
+					</div>
+				{/if}
+			</div>
+		</Card>
+
 	{:else if activeMenu === 'sources'}
 		<Card title="WhatsApp Sources" subtitle="{sr.total} sumber" class="overflow-hidden">
 			{#snippet headerActions()}
