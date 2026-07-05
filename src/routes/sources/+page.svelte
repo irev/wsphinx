@@ -438,10 +438,12 @@
 		creating = false;
 	}
 
-	function relativeTime(d: Date | null): string {
+	function relativeTime(d: Date | string | null): string {
 		if (!d) return '';
+		const date = d instanceof Date ? d : new Date(d);
+		if (isNaN(date.getTime())) return '';
 		const now = Date.now();
-		const diff = now - d.getTime();
+		const diff = now - date.getTime();
 		const mins = Math.floor(diff / 60000);
 		if (mins < 1) return 'baru saja';
 		if (mins < 60) return `${mins}m lalu`;
@@ -450,7 +452,7 @@
 		const days = Math.floor(hours / 24);
 		if (days === 1) return 'Kemarin';
 		if (days < 7) return `${days} hari lalu`;
-		return d.toLocaleDateString('id-ID');
+		return date.toLocaleDateString('id-ID');
 	}
 
 	function formatTime(d: Date): string {
@@ -551,7 +553,7 @@
 								<div class="flex-1 min-w-0">
 									<div class="flex items-center justify-between gap-1">
 										<span class="text-sm font-medium text-foreground truncate">{item.name}</span>
-										<span class="text-2xs text-muted-foreground shrink-0">{relativeTime(item.timestamp)}</span>
+										<span class="text-2xs text-muted-foreground shrink-0">{relativeTime(item.timestamp ? new Date(item.timestamp) : null)}</span>
 									</div>
 									<div class="flex items-center gap-1.5 mt-0.5">
 										<Badge size="sm" variant={item.type === 'group' ? 'primary' : 'info'}>{item.type}</Badge>
