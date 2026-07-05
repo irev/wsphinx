@@ -1,5 +1,18 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- Audit hardcoded values penyebab inkonsistensi:
+  - `settings/+page.svelte` — placeholder port `3457` → `9494`
+  - `webjs-adapter.ts` — `maxReconnectAttempts` baca dari DB setting `wa_worker_max_reconnect`
+  - `worker-manager.ts` — import `PORTS` dari `ports.ts` ganti hardcode `9494`
+  - `worker/index.ts` — import `PORTS` ganti hardcode `9494`
+  - `worker-url.ts` — default URL pake `getPortUrl("worker")` ganti hardcode `http://127.0.0.1:9494`
+  - `db/index.ts` — baca `DATABASE_URL` env untuk path DB
+  - `prisma/seed.ts` — baca `DATABASE_URL` + `WORKER_API_URL` dari env
+  - `chrome-helper.ts` — cross-platform detection (win64/mac_arm/linux)
+
 Maintain `CHANGELOG.md` according to Keep a Changelog 1.1.0:
 https://keepachangelog.com/en/1.1.0/
 Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and standard categories: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`. Keep entries human-readable and do not dump raw git logs.
