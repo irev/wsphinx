@@ -22,10 +22,13 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 
 ### Added
 - **QR auto-refresh**: interval 15 detik saat status `scanning_qr` — QR expired ~20 detik, auto-refresh cegah QR basi
+- **QR langsung muncul**: `fetchWaStatus()` trigger `fetchWaQr()` seketika saat status berubah jadi `scanning_qr` (sebelumnya nunggu interval 15 detik)
 - **Status `initializing`**: warna violet + `animate-pulse` di sidebar dan connection card (sebelumnya jatuh ke merah/destructive)
 - **`bg-info`** utility class di `custom.css`
+- **`size-56`** utility class di `custom.css` (QR image 224px)
 - **Health details card**: tampilkan reconnect attempts, uptime (format `formatDuration`)
 - **Guard `sendMessage()`**: throw error jika status bukan `connected` (sebelumnya silent fail)
+- **Fixed icon Keenicons**: `ki-refresh` → `ki-arrows-loop`, `ki-power` → `ki-switch`, `ki-health` → `ki-electricity`, `ki-logout` → `ki-exit-left` (4 icon sebelumnya tidak ada di font, tidak tampil)
 
 ### Fixed
 - ScrollToTop button position: `bottom-6` → `bottom-8`, added missing Tailwind classes (`opacity-0`, `translate-y-3`, `scale-95/100`, `pointer-events-none`, `z-50`, `right-6`, dll) ke `custom.css` — precompiled `styles.css` tidak mengandung utility classes tersebut

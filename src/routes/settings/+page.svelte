@@ -801,7 +801,7 @@
 		<Card title="WhatsApp Connection">
 			{#snippet headerActions()}
 				<button onclick={fetchWaStatus} class="kt-btn kt-btn-sm kt-btn-ghost" aria-label="Refresh status">
-					<i class="ki-filled ki-refresh text-sm"></i>
+					<i class="ki-filled ki-arrows-loop text-sm"></i>
 				</button>
 			{/snippet}
 			<div class="px-5 py-4 space-y-5">
@@ -892,16 +892,16 @@
 					<div class="flex flex-wrap gap-2 pt-1">
 						<button onclick={checkWaHealth} disabled={waHealthLoading} class="kt-btn kt-btn-sm kt-btn-outline">
 							{#if waHealthLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
-							<i class="ki-filled ki-health text-sm"></i>
+							<i class="ki-filled ki-electricity text-sm"></i>
 							Health Check
 						</button>
 						<button onclick={waReconnect} disabled={waReconnectLoading || waStatus.status === 'worker_offline' || waStatus.status === 'initializing'} class="kt-btn kt-btn-sm kt-btn-outline">
 							{#if waReconnectLoading}<span class="inline-block size-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-1"></span>{/if}
-							<i class="ki-filled ki-refresh text-sm"></i>
+							<i class="ki-filled ki-arrows-loop text-sm"></i>
 							Reconnect
 						</button>
 						<button onclick={waDisconnect} disabled={waDisconnectLoading || waStatus.status === 'disconnected' || waStatus.status === 'worker_offline' || waStatus.status === 'initializing'} class="kt-btn kt-btn-sm kt-btn-ghost">
-							<i class="ki-filled ki-power text-sm"></i>
+							<i class="ki-filled ki-switch text-sm"></i>
 							Disconnect
 						</button>
 						{#if waStatus.status === 'connected' || waStatus.status === 'disconnected' || waStatus.status === 'scanning_qr'}
@@ -913,7 +913,7 @@
 								</div>
 							{:else}
 								<button onclick={() => waLogoutConfirm = true} class="kt-btn kt-btn-sm kt-btn-danger">
-									<i class="ki-filled ki-logout text-sm"></i>
+									<i class="ki-filled ki-exit-left text-sm"></i>
 									Logout
 								</button>
 							{/if}
