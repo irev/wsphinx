@@ -7,6 +7,7 @@ Use `Unreleased`, newest-first version order, `YYYY-MM-DD` release dates, and st
 ## Unreleased
 
 ### Fixed
+- **CSS**: tambah utility class `bg-success`, `bg-warning`, `bg-destructive`, `bg-muted-foreground` dan `animate-ping` + `@keyframes ping` di `custom.css` — sebelumnya tidak terdefinisi, dot status WhatsApp tidak berwarna
 - Settings → Connection card: `waDisconnect`, `waDisconnectAndClear`, `waReconnect` — refresh API calls (status + session info) sebelum loading spinner dimatikan
 - `fetchWaQr()` hanya dipanggil di mount jika status sudah `scanning_qr`, bukan unconditional
 - Semua fetch connection ada timeout 5s via `AbortController` (cek worker mati tidak hang selamanya)
