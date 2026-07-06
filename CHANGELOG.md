@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Security
+- **PII cleanup**: Hapus semua data asli (nomor HP, nama, email pribadi) dari seed, env example, tests, docs, dan seluruh git history via filter-branch + env-filter
+- Seed: fallback phone diganti placeholder, nama PIC placeholder, email placeholder domain `company.com`
+- Author email di 31 commit: diganti ke `dev@company.com`
+
 ### Added
 - Dashboard: WhatsApp Stats Card — menampilkan statistik pesan masuk hari ini (jumlah pesan, terklasifikasi, support, tiket dibuat, unprocessed, avg confidence) dari `/api/whatsapp/stats`
 - Security: auto-mask phone number di semua API response JSON via hooks (`maskHandle`)
