@@ -13,7 +13,7 @@ Anda wajib menerapkan flow ini disetiap perubaan yang dilakukan: Buat rencana im
 
 
 # Phhone Number
-use `6281242535927` and `6281111111111` for real number test. 
+Ganti dengan nomor WhatsApp asli untuk testing. 
 
 
 ## ROADMAP

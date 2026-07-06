@@ -3,8 +3,8 @@ import { maskPhone, maskInApi, maskApiArray } from "../src/lib/utils/mask.js";
 
 describe("maskPhone", () => {
   it("masks all but last 4 digits", () => {
-    // "6281111111113" length = 13, so 9 asterisks + "3406"
-    expect(maskPhone("6281111111113")).toBe("*********3406");
+    // "6281111111113" length = 13, so 9 asterisks + "1113"
+    expect(maskPhone("6281111111113")).toBe("*********1113");
   });
 
   it("masks shorter numbers correctly", () => {
@@ -30,7 +30,7 @@ describe("maskPhone", () => {
 describe("maskInApi", () => {
   it("masks specified phone fields", () => {
     const result = maskInApi({ phone: "6281111111113", name: "Budi" }, ["phone"]);
-    expect(result.phone).toBe("*********3406");
+    expect(result.phone).toBe("*********1113");
     expect(result.name).toBe("Budi");
   });
 
@@ -40,7 +40,7 @@ describe("maskInApi", () => {
       ["phone", "secondaryPhone"]
     );
     // "6281234567890" length = 13, so 9 asterisks + "7890"
-    expect(result.phone).toBe("*********3406");
+    expect(result.phone).toBe("*********1113");
     expect(result.secondaryPhone).toBe("*********7890");
   });
 
@@ -58,7 +58,7 @@ describe("maskInApi", () => {
   it("does not mutate original", () => {
     const original = { phone: "6281111111113" };
     const result = maskInApi(original, ["phone"]);
-    expect(result.phone).toBe("*********3406");
+    expect(result.phone).toBe("*********1113");
     expect(original.phone).toBe("6281111111113");
   });
 });
@@ -70,7 +70,7 @@ describe("maskApiArray", () => {
       { phone: "6281234567890", name: "B" },
     ];
     const result = maskApiArray(arr, ["phone"]);
-    expect(result[0].phone).toBe("*********3406");
+    expect(result[0].phone).toBe("*********1113");
     expect(result[1].phone).toBe("*********7890");
   });
 

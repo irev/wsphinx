@@ -25,7 +25,7 @@
 | ID | Temuan | File | Dampak |
 |----|--------|------|--------|
 | C-01 | **Tidak ada autentikasi** — semua endpoint publik, siapa pun bisa akses API | Seluruh route `src/routes/api/*` | Data PII, tiket, settings, WA exposure |
-| C-02 | **Phone number hardcoded** `6281111111111` sebagai fallback | `worker/index.ts:57` | Ekspos PII jika env `WHATSAPP_PHONE` tidak diset |
+| C-02 | **Phone number hardcoded** sebagai fallback | `worker/index.ts` | Ekspos PII jika env `WHATSAPP_PHONE` tidak diset |
 | C-03 | **QR code (session token)** ditulis ke `.whatsapp-status.json` dalam plaintext + diekspos via 2 API tanpa auth | `worker/index.ts:16-20`, `/api/whatsapp/qr-image`, `/api/whatsapp/status` | Sesi WA bisa dicuri |
 | C-04 | **Phone number & body pesan dikirim ke Ollama** tanpa masking/konsen | `classifier/ollama.ts`, `routes/api/messages/classify/*`, `routes/api/chat/analyze/*` | PII bocor ke LLM eksternal |
 | C-05 | **No hooks.server.ts** — tidak ada global middleware (CSP, rate limit, CORS, auth guard) | Root project | Semua serangan web tidak terfilter |
@@ -204,7 +204,7 @@ route handler check event.locals.user
 
 | Task | Detail | File |
 |------|--------|------|
-| Hapus hardcoded phone | Ganti fallback `"6281111111111"` dengan `""` + error log | `worker/index.ts:57` |
+| Hapus hardcoded phone | Ganti fallback nomor dengan `""` + error log | `worker/index.ts` |
 | Soft delete → semua entity | Ubah `delete()` jadi `update({ active: false })` di settings endpoints | 5 files `settings/*/[id]/+server.ts` |
 | Mask phone di API | Buat helper `maskInApi()` untuk response JSON | `src/lib/utils/mask.ts` baru |
 | `.env.example` | Buat dari template env vars | New file |
